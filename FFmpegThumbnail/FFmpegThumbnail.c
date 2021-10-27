@@ -29,5 +29,9 @@
 
 HRESULT GetThumbnail(IN IStream* stream, int cx, OUT HBITMAP* thumbnail) {
     // TODO: Implement
-    return S_FALSE;
+
+    *thumbnail = (HBITMAP)LoadImage(NULL, L"test.bmp",
+        IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
+    return S_OK;
 }

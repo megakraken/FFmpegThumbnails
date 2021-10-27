@@ -3,6 +3,13 @@
 
 #include <Windows.h>
 
-HRESULT GetThumbnail(IN IStream* stream, int cx, OUT HBITMAP* thumbnail);
+#ifdef __cplusplus
+extern "C" {
+#endif
+    HRESULT GetThumbnail(IN IStream* stream, int cx, OUT HBITMAP* thumbnail);
+
+#ifdef __cplusplus
+}
+#endif  /* __cplusplus */
 
 #endif /* _FFMPEGTHUMBNAIL_H_ */
