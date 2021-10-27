@@ -31,9 +31,11 @@
 static int get_video_stream_index(AVFormatContext *ic);
 static int read_cb(void *opaque, uint8_t *buf, int bufSize);
 static int64_t seek_cb(void *opaque, int64_t offset, int whence);
+static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
+    AVFrame *frameRGB, struct SwsContext *swsCtx);
 
 HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *thumbnail) {
-    // TODO: Implement
+    // TODO: Try to refactor into smaller chunks if possible and makes sense.
     HRESULT ret = E_FAIL;
     int ioBufferSize = 32768;
     AVIOContext *avioCtx = NULL;
@@ -111,6 +113,15 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *thumbnail) {
         ret = AVERROR_UNKNOWN;
         goto end;
     }
+    while (av_read_frame(fmtCtx, packet) >= 0) {
+        if (packet->stream_index == streamIdx) {
+            // TODO: decode packet.
+            if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx)) < 0) {
+                goto end;
+            }
+        }
+        av_packet_unref(packet);
+    }
         
     *thumbnail = (HBITMAP)LoadImage(NULL, L"test.bmp",
         IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
@@ -132,6 +143,39 @@ end:
     if (avioCtx)
         avio_context_free(&avioCtx);
     return ret;
+}
+
+void save_rgb_frame(unsigned char *buf, int wrap, int xsize, int ysize) {
+    FILE *f;
+    int i;
+    f = fopen("test.ppm", "wb");
+    fprintf(f, "P6\n%d %d\n255\n", xsize, ysize);
+
+    for (i = 0; i < ysize; i++) {
+        unsigned char *ch = (buf + i * wrap);
+        //ProcessArray(ch, xsize);
+        fwrite(ch, 1, xsize * 3, f);  //Write 3 bytes per pixel.
+    }
+
+    fclose(f);
+}
+
+static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
+    AVFrame *frameRGB, struct SwsContext *swsCtx) {
+    int ret;
+    if ((ret = avcodec_send_packet(codecCtx, packet)) < 0)
+        return ret;
+    while (ret >= 0) {
+        ret = avcodec_receive_frame(codecCtx, frame);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            return 0;
+        if (ret < 0)
+            return ret;
+        if ((ret = sws_scale(swsCtx, frame->data, frame->linesize,
+            0, codecCtx->height, frameRGB->data, frameRGB->linesize)) < 0)
+            return ret;
+        save_rgb_frame(frameRGB->data[0], frameRGB->linesize[0], frameRGB->width, frameRGB->height);
+    }
 }
 
 static int get_video_stream_index(AVFormatContext *ic) {
