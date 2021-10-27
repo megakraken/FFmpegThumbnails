@@ -7,7 +7,7 @@ using namespace Gdiplus;
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "gdiplus.lib")
 
-int SaveThumbnail(HBITMAP hThumbnail, const WCHAR* filename);
+int SaveAsPng(HBITMAP hBitmap, const WCHAR* filename);
 
 int main(int argc, char* argv[]) {
     int ret, size;
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     const WCHAR* name = L"thumbnail.png";
-    if (SaveThumbnail(bmp, name) != S_OK)
+    if (SaveAsPng(bmp, name) != S_OK)
         printf("Error writing thumbnail: %i\n", ret);
     else
         wprintf(L"Thumbnail written as %ws\n", name);
@@ -56,12 +56,12 @@ int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
     return -1;
 }
 
-int SaveThumbnail(HBITMAP hThumbnail, const WCHAR* filename) {
+int SaveAsPng(HBITMAP hBitmap, const WCHAR* filename) {
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
     int ret = 0;
-    Bitmap* image = new Bitmap(hThumbnail, NULL);
+    Bitmap* image = new Bitmap(hBitmap, NULL);
     CLSID myClsId;
     if((ret = GetEncoderClsid(L"image/png", &myClsId)) < 0)
         goto end;
