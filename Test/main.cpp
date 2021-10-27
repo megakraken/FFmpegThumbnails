@@ -7,9 +7,9 @@ using namespace Gdiplus;
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "gdiplus.lib")
 
-int SaveAsPng(HBITMAP hBitmap, const WCHAR* filename);
+int SaveAsPng(HBITMAP hBitmap, const WCHAR *filename);
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     int ret, size;
     IStream* stream;
     HBITMAP bmp;
@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
         printf("Error creating thumbnail: %i\n", ret);
         return -1;
     }
-    const WCHAR* name = L"thumbnail.png";
+    const WCHAR *name = L"thumbnail.png";
     if (SaveAsPng(bmp, name) != S_OK)
         printf("Error writing thumbnail: %i\n", ret);
     else
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 }
 
 // See here: https://stackoverflow.com/a/24645420
-int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
+int GetEncoderClsid(const WCHAR *format, CLSID *pClsid) {
     UINT num = 0, size = 0;
     ImageCodecInfo* pImageCodecInfo = NULL;
     GetImageEncodersSize(&num, &size);
@@ -56,12 +56,12 @@ int GetEncoderClsid(const WCHAR* format, CLSID* pClsid) {
     return -1;
 }
 
-int SaveAsPng(HBITMAP hBitmap, const WCHAR* filename) {
+int SaveAsPng(HBITMAP hBitmap, const WCHAR *filename) {
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
     int ret = 0;
-    Bitmap* image = new Bitmap(hBitmap, NULL);
+    Bitmap *image = new Bitmap(hBitmap, NULL);
     CLSID myClsId;
     if((ret = GetEncoderClsid(L"image/png", &myClsId)) < 0)
         goto end;

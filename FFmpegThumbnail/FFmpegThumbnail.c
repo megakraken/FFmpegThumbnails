@@ -20,6 +20,7 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/defs.h>
 #include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -27,22 +28,25 @@
 #include <inttypes.h>
 #include <objidl.h>
 
-static int get_video_stream_index(AVFormatContext* ic);
-static int read_cb(void* opaque, uint8_t* buf, int bufSize);
-static int64_t seek_cb(void* opaque, int64_t offset, int whence);
+static int get_video_stream_index(AVFormatContext *ic);
+static int read_cb(void *opaque, uint8_t *buf, int bufSize);
+static int64_t seek_cb(void *opaque, int64_t offset, int whence);
 
-HRESULT GetThumbnail(IN IStream* stream, int cx, OUT HBITMAP* thumbnail) {
+HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *thumbnail) {
     // TODO: Implement
     HRESULT ret = E_FAIL;
     int ioBufferSize = 32768;
-    AVIOContext* avioCtx = NULL;
-    AVFormatContext* fmtCtx = NULL;
-    AVCodecContext* codecCtx = NULL;
-    AVCodecParameters* codecParams = NULL;
-    AVCodec* codec = NULL;
-    AVFrame* frame = NULL;
+    AVIOContext *avioCtx = NULL;
+    AVFormatContext *fmtCtx = NULL;
+    AVCodecContext *codecCtx = NULL;
+    AVCodecParameters *codecParams = NULL;
+    AVCodec *codec = NULL;
+    AVFrame *frame = NULL, *frameRGB = NULL;
+    AVPacket *packet = NULL;
     int streamIdx = -1;
-    unsigned char* ioBuffer = av_malloc(ioBufferSize + AV_INPUT_BUFFER_PADDING_SIZE);
+    uint8_t *frameBuf = NULL;
+    struct SwsContext *swsCtx = NULL;
+    unsigned char *ioBuffer = av_malloc(ioBufferSize + AV_INPUT_BUFFER_PADDING_SIZE);
     if (ioBuffer == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
@@ -82,9 +86,45 @@ HRESULT GetThumbnail(IN IStream* stream, int cx, OUT HBITMAP* thumbnail) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
+    if ((frameRGB = av_frame_alloc()) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    if ((ret = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codecCtx->width,
+        codecCtx->height, 1)) < 0) {
+        goto end;
+    }
+    frameBuf = av_malloc(ret);
+    if ((ret = av_image_fill_arrays(frameRGB->data, frameRGB->linesize,
+        frameBuf, AV_PIX_FMT_RGB24, codecCtx->width, codecCtx->height, 1)) < 0) {
+        goto end;
+    }
+    frameRGB->width = codecCtx->width;
+    frameRGB->height = codecCtx->height;
+    if ((packet = av_packet_alloc()) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    if ((swsCtx = sws_getContext(codecCtx->width, codecCtx->height, codecCtx->pix_fmt,
+        codecCtx->width, codecCtx->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL,
+        NULL, NULL)) == NULL) {
+        ret = AVERROR_UNKNOWN;
+        goto end;
+    }
+        
     *thumbnail = (HBITMAP)LoadImage(NULL, L"test.bmp",
         IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 end:
+    if (swsCtx)
+        sws_freeContext(swsCtx);
+    if (packet)
+        av_packet_free(&packet);
+    if (frameBuf)
+        av_free(frameBuf);
+    if (frameRGB)
+        av_frame_free(&frameRGB);
+    if (frame)
+        av_frame_free(&frame);
     if (codecCtx)
         avcodec_free_context(&codecCtx);
     if (fmtCtx)
@@ -94,7 +134,7 @@ end:
     return ret;
 }
 
-static int get_video_stream_index(AVFormatContext* ic) {
+static int get_video_stream_index(AVFormatContext *ic) {
     for (int i = 0; i < ic->nb_streams; i++) {
         if (ic->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
             return i;
@@ -102,8 +142,8 @@ static int get_video_stream_index(AVFormatContext* ic) {
     return AVERROR_STREAM_NOT_FOUND;
 }
 
-static int read_cb(void* opaque, uint8_t* buf, int bufSize) {
-    IStream* stream = (IStream*)opaque;
+static int read_cb(void *opaque, uint8_t *buf, int bufSize) {
+    IStream *stream = (IStream*)opaque;
     ULONG numBytes;
     IStream_Read(stream, buf, bufSize, &numBytes);
     if (numBytes == 0)
@@ -111,8 +151,8 @@ static int read_cb(void* opaque, uint8_t* buf, int bufSize) {
     return numBytes;
 }
 
-static int64_t seek_cb(void* opaque, int64_t offset, int whence) {
-    IStream* stream = (IStream*)opaque;
+static int64_t seek_cb(void *opaque, int64_t offset, int whence) {
+    IStream *stream = (IStream*)opaque;
     if (whence & AVSEEK_SIZE) {
         STATSTG stg;
         if (IStream_Stat(stream, &stg, STATFLAG_DEFAULT) != S_OK)
