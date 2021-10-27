@@ -27,6 +27,7 @@
 #include <inttypes.h>
 #include <objidl.h>
 
+static int get_video_stream_index(AVFormatContext* ic);
 static int read_cb(void* opaque, uint8_t* buf, int bufSize);
 static int64_t seek_cb(void* opaque, int64_t offset, int whence);
 
@@ -34,31 +35,71 @@ HRESULT GetThumbnail(IN IStream* stream, int cx, OUT HBITMAP* thumbnail) {
     // TODO: Implement
     HRESULT ret = E_FAIL;
     int ioBufferSize = 32768;
-    AVIOContext *avioContext = NULL;
-    AVFormatContext *pFormatContext = NULL;
+    AVIOContext* avioCtx = NULL;
+    AVFormatContext* fmtCtx = NULL;
+    AVCodecContext* codecCtx = NULL;
+    AVCodecParameters* codecParams = NULL;
+    AVCodec* codec = NULL;
+    AVFrame* frame = NULL;
+    int streamIdx = -1;
     unsigned char* ioBuffer = av_malloc(ioBufferSize + AV_INPUT_BUFFER_PADDING_SIZE);
     if (ioBuffer == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
-    if ((avioContext = avio_alloc_context( ioBuffer, ioBufferSize, 0, stream, &read_cb,
+    if ((avioCtx = avio_alloc_context( ioBuffer, ioBufferSize, 0, stream, &read_cb,
         NULL, &seek_cb)) == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
-    if((pFormatContext = avformat_alloc_context()) == NULL) {
+    if((fmtCtx = avformat_alloc_context()) == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
-
+    fmtCtx->pb = avioCtx;
+    if ((ret = avformat_open_input(&fmtCtx, "dummy", NULL, NULL)) != 0)
+        goto end;
+    if ((ret = avformat_find_stream_info(fmtCtx, NULL)) < 0)
+        goto end;
+    // Find the first video stream
+    if ((ret = get_video_stream_index(fmtCtx)) < 0)
+        goto end;
+    streamIdx = ret;
+    codecParams = fmtCtx->streams[streamIdx]->codecpar;
+    if ((codec = avcodec_find_decoder(codecParams->codec_id)) == NULL) {
+        ret = AVERROR_DECODER_NOT_FOUND;
+        goto end;
+    }
+    if ((codecCtx = avcodec_alloc_context3(codec)) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    if ((ret = avcodec_parameters_to_context(codecCtx, codecParams)) < 0)
+        goto end;
+    if ((ret = avcodec_open2(codecCtx, codec, NULL)) < 0)
+        goto end;
+    if ((frame = av_frame_alloc()) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
     *thumbnail = (HBITMAP)LoadImage(NULL, L"test.bmp",
         IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 end:
-    if (pFormatContext)
-        avformat_close_input(&pFormatContext);
-    if (avioContext)
-        avio_context_free(&avioContext);
+    if (codecCtx)
+        avcodec_free_context(&codecCtx);
+    if (fmtCtx)
+        avformat_close_input(&fmtCtx);
+    if (avioCtx)
+        avio_context_free(&avioCtx);
     return ret;
+}
+
+static int get_video_stream_index(AVFormatContext* ic) {
+    for (int i = 0; i < ic->nb_streams; i++) {
+        if (ic->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+            return i;
+    }
+    return AVERROR_STREAM_NOT_FOUND;
 }
 
 static int read_cb(void* opaque, uint8_t* buf, int bufSize) {
