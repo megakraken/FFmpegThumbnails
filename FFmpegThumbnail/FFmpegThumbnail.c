@@ -34,7 +34,21 @@ static int64_t seek_cb(void *opaque, int64_t offset, int whence);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
     AVFrame *frameRGB, struct SwsContext *swsCtx);
 
-HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *thumbnail) {
+/**
+ * Gets a thumbnail for the video contained in the given stream.
+ * 
+ * @param stream  A pointer to an IStream interface that represents the stream
+ *                source that contains the video.
+ * @param cx      The maximum thumbnail size, in pixels. The returned bitmap should
+ *                fit into a square of width and height cx, though it does not need
+ *                to be a square image. 
+ * @param hbmp    When this function returns, contains a pointer to the thumbnail
+ *                image handle. The image is a DIB section and 32 bits per pixel.
+ * 
+ * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
+ *                an HRESULT (or FFMPEG) error code.
+ */
+HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
     // TODO: Try to refactor into smaller chunks if possible and makes sense.
     HRESULT ret = E_FAIL;
     int ioBufferSize = 32768;
@@ -42,7 +56,7 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *thumbnail) {
     AVFormatContext *fmtCtx = NULL;
     AVCodecContext *codecCtx = NULL;
     AVCodecParameters *codecParams = NULL;
-    AVCodec *codec = NULL;
+    const AVCodec *codec = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
     int streamIdx = -1;
@@ -123,8 +137,9 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *thumbnail) {
         av_packet_unref(packet);
     }
         
-    *thumbnail = (HBITMAP)LoadImage(NULL, L"test.bmp",
+    *hbmp = (HBITMAP)LoadImage(NULL, L"test.bmp",
         IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    ret = S_OK;
 end:
     if (swsCtx)
         sws_freeContext(swsCtx);
@@ -176,10 +191,11 @@ static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *fr
             return ret;
         save_rgb_frame(frameRGB->data[0], frameRGB->linesize[0], frameRGB->width, frameRGB->height);
     }
+    return ret;
 }
 
 static int get_video_stream_index(AVFormatContext *ic) {
-    for (int i = 0; i < ic->nb_streams; i++) {
+    for (unsigned int i = 0; i < ic->nb_streams; i++) {
         if (ic->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
             return i;
     }
