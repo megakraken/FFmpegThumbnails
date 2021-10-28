@@ -31,8 +31,13 @@
 static int get_video_stream_index(AVFormatContext *ic);
 static int read_cb(void *opaque, uint8_t *buf, int bufSize);
 static int64_t seek_cb(void *opaque, int64_t offset, int whence);
+static HRESULT create_format_context(IStream *stream, AVFormatContext **dst);
+static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst);
+static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
     AVFrame *frameRGB, struct SwsContext *swsCtx);
+static HRESULT create_bitmap(uint8_t data, int linesize, int width, int height,
+    OUT HBITMAP *hbmp);
 
 /**
  * Gets a thumbnail for the video contained in the given stream.
@@ -49,84 +54,43 @@ static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *fr
  *                an HRESULT (or FFMPEG) error code.
  */
 HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
-    // TODO: Try to refactor into smaller chunks if possible and makes sense.
     HRESULT ret = E_FAIL;
-    int ioBufferSize = 32768;
-    AVIOContext *avioCtx = NULL;
     AVFormatContext *fmtCtx = NULL;
     AVCodecContext *codecCtx = NULL;
-    AVCodecParameters *codecParams = NULL;
-    const AVCodec *codec = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
     int streamIdx = -1;
-    uint8_t *frameBuf = NULL;
     struct SwsContext *swsCtx = NULL;
-    unsigned char *ioBuffer = av_malloc(ioBufferSize + AV_INPUT_BUFFER_PADDING_SIZE);
-    if (ioBuffer == NULL) {
-        ret = E_OUTOFMEMORY;
+    if ((ret = create_format_context(stream, &fmtCtx)) < 0)
         goto end;
-    }
-    if ((avioCtx = avio_alloc_context( ioBuffer, ioBufferSize, 0, stream, &read_cb,
-        NULL, &seek_cb)) == NULL) {
-        ret = E_OUTOFMEMORY;
-        goto end;
-    }
-    if((fmtCtx = avformat_alloc_context()) == NULL) {
-        ret = E_OUTOFMEMORY;
-        goto end;
-    }
-    fmtCtx->pb = avioCtx;
-    if ((ret = avformat_open_input(&fmtCtx, "dummy", NULL, NULL)) != 0)
-        goto end;
-    if ((ret = avformat_find_stream_info(fmtCtx, NULL)) < 0)
-        goto end;
-    // Find the first video stream
     if ((ret = get_video_stream_index(fmtCtx)) < 0)
         goto end;
     streamIdx = ret;
-    codecParams = fmtCtx->streams[streamIdx]->codecpar;
-    if ((codec = avcodec_find_decoder(codecParams->codec_id)) == NULL) {
-        ret = AVERROR_DECODER_NOT_FOUND;
+    if ((ret = create_codec_context(
+        fmtCtx->streams[streamIdx]->codecpar, &codecCtx)) < 0) {
         goto end;
     }
-    if ((codecCtx = avcodec_alloc_context3(codec)) == NULL) {
-        ret = E_OUTOFMEMORY;
-        goto end;
-    }
-    if ((ret = avcodec_parameters_to_context(codecCtx, codecParams)) < 0)
-        goto end;
-    if ((ret = avcodec_open2(codecCtx, codec, NULL)) < 0)
-        goto end;
     if ((frame = av_frame_alloc()) == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
-    if ((frameRGB = av_frame_alloc()) == NULL) {
-        ret = E_OUTOFMEMORY;
+    if ((ret = create_rgb_frame(codecCtx, cx, &frameRGB)) < 0)
         goto end;
-    }
-    if ((ret = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codecCtx->width,
-        codecCtx->height, 1)) < 0) {
-        goto end;
-    }
-    frameBuf = av_malloc(ret);
-    if ((ret = av_image_fill_arrays(frameRGB->data, frameRGB->linesize,
-        frameBuf, AV_PIX_FMT_RGB24, codecCtx->width, codecCtx->height, 1)) < 0) {
-        goto end;
-    }
-    frameRGB->width = codecCtx->width;
-    frameRGB->height = codecCtx->height;
     if ((packet = av_packet_alloc()) == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
+    // FIXME: use cx
     if ((swsCtx = sws_getContext(codecCtx->width, codecCtx->height, codecCtx->pix_fmt,
         codecCtx->width, codecCtx->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL,
         NULL, NULL)) == NULL) {
         ret = AVERROR_UNKNOWN;
         goto end;
     }
+    // TODO: Seek to timestamp.
+    // Extract frame.
+    // Convert RGB frame to DIB.
+
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
             // TODO: decode packet.
@@ -137,6 +101,7 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
         av_packet_unref(packet);
     }
         
+    
     *hbmp = (HBITMAP)LoadImage(NULL, L"test.bmp",
         IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     ret = S_OK;
@@ -145,18 +110,22 @@ end:
         sws_freeContext(swsCtx);
     if (packet)
         av_packet_free(&packet);
-    if (frameBuf)
-        av_free(frameBuf);
-    if (frameRGB)
+    if (frameRGB) {
+        av_free(frameRGB->data[0]);
         av_frame_free(&frameRGB);
+    }
     if (frame)
         av_frame_free(&frame);
     if (codecCtx)
         avcodec_free_context(&codecCtx);
-    if (fmtCtx)
+    if (fmtCtx) {
+        // We must also clean up the associated AVIOContext.
+        if (fmtCtx->pb) {
+            av_free(fmtCtx->pb->buffer);
+            avio_context_free(&fmtCtx->pb);
+        }
         avformat_close_input(&fmtCtx);
-    if (avioCtx)
-        avio_context_free(&avioCtx);
+    }
     return ret;
 }
 
@@ -171,8 +140,133 @@ void save_rgb_frame(unsigned char *buf, int wrap, int xsize, int ysize) {
         //ProcessArray(ch, xsize);
         fwrite(ch, 1, xsize * 3, f);  //Write 3 bytes per pixel.
     }
-
+    
     fclose(f);
+}
+
+/**
+ * This creates and initializes an AVFormatContext and sets it up to read media data
+ * from the given stream.
+ * 
+ * @param stream  The IStream instance the AVFormatContext will be wired up to.
+ * @param dst     A pointer to a pointer that will point to the allocated AVFormatContext
+ *                structure upon function return.
+ * 
+ * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
+ *                an HRESULT (or FFMPEG) error code.
+ */
+static HRESULT create_format_context(IStream *stream, AVFormatContext **dst) {
+    HRESULT ret = E_FAIL;
+    int bufSize = 32768;
+    AVIOContext *avioCtx = NULL;
+    AVFormatContext *fmtCtx = NULL;
+    unsigned char *buf = av_malloc(bufSize + AV_INPUT_BUFFER_PADDING_SIZE);
+    if (buf == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    if ((avioCtx = avio_alloc_context(buf, bufSize, 0, stream, &read_cb,
+        NULL, &seek_cb)) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    if ((fmtCtx = avformat_alloc_context()) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    // This needs to free'd on cleanup.
+    fmtCtx->pb = avioCtx;
+    if ((ret = avformat_open_input(&fmtCtx, "dummy", NULL, NULL)) != 0)
+        goto end;
+    if ((ret = avformat_find_stream_info(fmtCtx, NULL)) < 0)
+        goto end;
+    ret = S_OK;
+    *dst = fmtCtx;
+end:
+    if (ret < 0) {
+        if (fmtCtx)
+            avformat_close_input(&fmtCtx);
+        if (avioCtx) {
+            av_free(avioCtx->buffer);
+            avio_context_free(&avioCtx);
+        }
+    }
+    return ret;
+}
+
+static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst) {
+    HRESULT ret = E_FAIL;
+    const AVCodec *codec = NULL;
+    AVCodecContext *codecCtx = NULL;
+    if ((codec = avcodec_find_decoder(codecParams->codec_id)) == NULL) {
+        ret = AVERROR_DECODER_NOT_FOUND;
+        goto end;
+    }
+    if ((codecCtx = avcodec_alloc_context3(codec)) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    if ((ret = avcodec_parameters_to_context(codecCtx, codecParams)) < 0)
+        goto end;
+    if ((ret = avcodec_open2(codecCtx, codec, NULL)) < 0)
+        goto end;
+    ret = S_OK;
+    *dst = codecCtx;
+end:
+    if (ret < 0) {
+        if (codecCtx)
+            avcodec_free_context(&codecCtx);
+    }
+    return ret;
+}
+
+static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst) {
+    HRESULT ret = E_FAIL;
+    AVFrame *frameRGB = NULL;
+    uint8_t *frameBuf = NULL;
+    if ((frameRGB = av_frame_alloc()) == NULL) {
+        ret = E_OUTOFMEMORY;
+        goto end;
+    }
+    // FIXME: use cx
+    if ((ret = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codecCtx->width,
+        codecCtx->height, 1)) < 0) {
+        goto end;
+    }
+    frameBuf = av_malloc(ret);
+    // This will set up frameRGB->data[0] to point at the same address as frameBuf
+    // is pointing to, so when cleaning up we can just free frameRGB->data[0] and
+    // don't need to pass frameBuf around.
+    if ((ret = av_image_fill_arrays(frameRGB->data, frameRGB->linesize,
+        frameBuf, AV_PIX_FMT_RGB24, codecCtx->width, codecCtx->height, 1)) < 0) {
+        goto end;
+    }
+    frameRGB->width = codecCtx->width;
+    frameRGB->height = codecCtx->height;
+    ret = S_OK;
+    *dst = frameRGB;
+end:
+    if (ret < 0) {
+        if (frameBuf)
+            av_free(frameBuf);
+        if (frameRGB)
+            av_frame_free(&frameRGB);
+    }
+    return ret;
+}
+
+static HRESULT create_bitmap(uint8_t data, int linesize, int width, int height,
+    OUT HBITMAP *hbmp) {
+    BITMAPINFO bmi = { 0 };
+    bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = height;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+//    CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, ...
+// SetDIBits?
+    return S_OK;
 }
 
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
