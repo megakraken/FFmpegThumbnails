@@ -32,6 +32,7 @@ static HRESULT create_format_context(IStream *stream, AVFormatContext **dst);
 static int get_video_stream_index(AVFormatContext *ic);
 static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst);
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
+static int seek_to(int seconds, AVFormatContext *fmtCtx, int streamIdx);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
     AVFrame *frameRGB, struct SwsContext *swsCtx);
 static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp);
@@ -89,6 +90,8 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
     // Extract frame.
     // Convert to RGB and resize frame.
     // Convert to DIB.
+    int seconds = 10;
+    seek_to(10, fmtCtx, streamIdx);
 
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
@@ -252,6 +255,15 @@ end:
             av_frame_free(&frameRGB);
     }
     return ret;
+}
+
+static int seek_to(int seconds, AVFormatContext *fmtCtx, int streamIdx) {
+    int64_t ts = av_rescale(
+        seconds,
+        fmtCtx->streams[streamIdx]->time_base.den,
+        fmtCtx->streams[streamIdx]->time_base.num
+    );
+    return avformat_seek_file(fmtCtx, streamIdx, 0, ts, ts, 0);
 }
 
 static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
