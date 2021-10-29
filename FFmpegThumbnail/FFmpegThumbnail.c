@@ -36,7 +36,7 @@ static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecConte
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
     AVFrame *frameRGB, struct SwsContext *swsCtx);
-static HRESULT create_bitmap(uint8_t data, int linesize, int width, int height,
+static HRESULT create_bitmap(uint8_t *data, int linesize, int width, int height,
     OUT HBITMAP *hbmp);
 static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frameRGB,
     AVFrame *frame, AVCodecContext *codecCtx, AVFormatContext *fmtCtx);
@@ -97,34 +97,22 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
             // TODO: decode packet.
-            if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx)) < 0) {
-                goto end;
-            }
+ //           if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx)) < 0) {
+ //               goto end;
+ //           }
+            decode_packet(codecCtx, packet, frame, frameRGB, swsCtx);
+            create_bitmap(frameRGB->data[0], frameRGB->linesize[0], frameRGB->width, frameRGB->height, hbmp);
+            break;
         }
         av_packet_unref(packet);
     }
 
-    *hbmp = (HBITMAP)LoadImage(NULL, L"test.bmp",
-        IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+//    *hbmp = (HBITMAP)LoadImage(NULL, L"test.bmp",
+//        IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     ret = S_OK;
 end:
     clean_up(swsCtx, packet, frameRGB, frame, codecCtx, fmtCtx);
     return ret;
-}
-
-void save_rgb_frame(unsigned char *buf, int wrap, int xsize, int ysize) {
-    FILE *f;
-    int i;
-    f = fopen("test.ppm", "wb");
-    fprintf(f, "P6\n%d %d\n255\n", xsize, ysize);
-
-    for (i = 0; i < ysize; i++) {
-        unsigned char *ch = (buf + i * wrap);
-        //ProcessArray(ch, xsize);
-        fwrite(ch, 1, xsize * 3, f);  //Write 3 bytes per pixel.
-    }
-    
-    fclose(f);
 }
 
 /**
@@ -238,18 +226,41 @@ end:
     return ret;
 }
 
-static HRESULT create_bitmap(uint8_t data, int linesize, int width, int height,
+static HRESULT create_bitmap(uint8_t *data, int linesize, int width, int height,
     OUT HBITMAP *hbmp) {
+    HRESULT ret;
+    unsigned char *bits;
+    int i, c, y;
     BITMAPINFO bmi = { 0 };
     bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
     bmi.bmiHeader.biWidth = width;
-    bmi.bmiHeader.biHeight = height;
+    // MSDN: If biHeight is negative, the bitmap is a top-down DIB with the origin at the
+    //       upper left corner.
+    bmi.bmiHeader.biHeight = -height;
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
-//    CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, ...
-// SetDIBits?
-    return S_OK;
+    *hbmp = NULL;
+    if ((*hbmp = CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, &bits, NULL, 0)) == NULL) {
+        ret = GetLastError();
+        goto end;
+    }
+    unsigned int *bytes = bits;
+    for (i = 0; i < height; i++) {
+        // linesize is just the size of a single line in bytes, i.e. for a 24-bit image
+        // linesize = width * 3.
+        unsigned char *ch = (data + i * linesize);
+        for (c = 0; c < width; c++) {
+            bytes[i * width + c] = (ch[c * 3 + 0] << 16) | (ch[c * 3 + 1] << 8) | (ch[c * 3 + 2]);
+        }
+    }
+    ret = S_OK;
+end:
+    if (ret < 0) {
+        if (*hbmp)
+            DeleteObject(*hbmp);
+    }
+    return ret;
 }
 
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
@@ -266,7 +277,8 @@ static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *fr
         if ((ret = sws_scale(swsCtx, frame->data, frame->linesize,
             0, codecCtx->height, frameRGB->data, frameRGB->linesize)) < 0)
             return ret;
-        save_rgb_frame(frameRGB->data[0], frameRGB->linesize[0], frameRGB->width, frameRGB->height);
+
+        return 0;
     }
     return ret;
 }
