@@ -27,12 +27,13 @@
 #include <string.h>
 #include <inttypes.h>
 #include <objidl.h>
+#include "FFmpegThumbnail.h"
 
 static HRESULT create_format_context(IStream *stream, AVFormatContext **dst);
 static int get_video_stream_index(AVFormatContext *ic);
 static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst);
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
-static int seek_to(int seconds, AVFormatContext *fmtCtx, int streamIdx);
+static int seek_to_ts(int ts, AVFormatContext *fmtCtx, int streamIdx);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
     AVFrame *frameRGB, struct SwsContext *swsCtx, int *frameFinished);
 static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp);
@@ -46,20 +47,26 @@ static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frame
  *                source that contains the video.
  * @param cx      The maximum thumbnail size, in pixels. The returned bitmap should
  *                fit into a square of width and height cx, though it does not need
- *                to be a square image. 
+ *                to be a square image.
+ * @param ts      The timestamp at which to generate the thumbnail within the video
+ *                file. Can be either a positive value to denote an offset in seconds,
+ *                or one of the following values:
+ *                TS_FIRSTFRAME - Generate thumbnail from the very first video frame.
+ *                TS_BEGINNING  - Generate thumbnail from the beginning of the video.
+ *                TS_MIDDLE     - Generate thumbnail from the middle of the video.
  * @param hbmp    When this function returns, contains a pointer to the thumbnail
  *                image handle. The image is a DIB section and 32 bits per pixel.
  * 
  * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
  *                an HRESULT (or FFMPEG) error code.
  */
-HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
+HRESULT GetThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *hbmp) {
     HRESULT ret;
     AVFormatContext *fmtCtx = NULL;
     AVCodecContext *codecCtx = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
-    int streamIdx, frameFinished;
+    int streamIdx, frameFinished, duration;
     struct SwsContext *swsCtx = NULL;
     if ((ret = create_format_context(stream, &fmtCtx)) < 0)
         goto end;
@@ -86,11 +93,8 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
         ret = AVERROR_UNKNOWN;
         goto end;
     }
-    // TODO: figure out a good way to let user fine-tune when to generate the thumbnail.
-    //       either at the very beginning of the video or the middle perhaps.
-    int seconds = 10;
-    seek_to(10, fmtCtx, streamIdx);
-
+    if ((ret = seek_to_ts(ts, fmtCtx, streamIdx)) < 0)
+        goto end;
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
             if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx,
@@ -256,13 +260,25 @@ end:
     return ret;
 }
 
-static int seek_to(int seconds, AVFormatContext *fmtCtx, int streamIdx) {
-    int64_t ts = av_rescale(
-        seconds,
+static int seek_to_ts(int ts, AVFormatContext *fmtCtx, int streamIdx) {
+    // figure out video duration in seconds.
+    int duration = (int)(fmtCtx->duration / 1000000);
+    if (duration <= 0)
+        return S_OK;
+    if (ts > 0 && ts >= duration)
+        ts = TS_BEGINNING;
+    if (ts == TS_BEGINNING)
+        ts = min(5, duration);
+    else if (ts == TS_MIDDLE)
+        ts = (int)(duration * 0.5);
+    if (ts <= 0 || ts == duration || ts == TS_FIRSTFRAME)
+        return S_OK;
+    int64_t ffmpeg_ts = av_rescale(
+        ts,
         fmtCtx->streams[streamIdx]->time_base.den,
         fmtCtx->streams[streamIdx]->time_base.num
     );
-    return avformat_seek_file(fmtCtx, streamIdx, 0, ts, ts, 0);
+    return avformat_seek_file(fmtCtx, streamIdx, 0, ffmpeg_ts, ffmpeg_ts, 0);
 }
 
 static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
@@ -283,9 +299,6 @@ static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
         ret = GetLastError();
         goto end;
     }
-    printf("width %i\n", frameRGB->width);
-    printf("height: %i\n", frameRGB->height);
-    printf("linesize %i\n", frameRGB->linesize[0]);
     unsigned int *bytes = (unsigned int*) bits;
     for (i = 0; i < frameRGB->height; i++) {
         // linesize is just the size of a single line in bytes, i.e. for a 24-bit image
