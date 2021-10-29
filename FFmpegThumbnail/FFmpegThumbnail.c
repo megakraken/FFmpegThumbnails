@@ -28,16 +28,13 @@
 #include <inttypes.h>
 #include <objidl.h>
 
-static int get_video_stream_index(AVFormatContext *ic);
-static int read_cb(void *opaque, uint8_t *buf, int bufSize);
-static int64_t seek_cb(void *opaque, int64_t offset, int whence);
 static HRESULT create_format_context(IStream *stream, AVFormatContext **dst);
+static int get_video_stream_index(AVFormatContext *ic);
 static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst);
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
     AVFrame *frameRGB, struct SwsContext *swsCtx);
-static HRESULT create_bitmap(uint8_t *data, int linesize, int width, int height,
-    OUT HBITMAP *hbmp);
+static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp);
 static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frameRGB,
     AVFrame *frame, AVCodecContext *codecCtx, AVFormatContext *fmtCtx);
 
@@ -82,9 +79,8 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
-    // FIXME: use cx
     if ((swsCtx = sws_getContext(codecCtx->width, codecCtx->height, codecCtx->pix_fmt,
-        codecCtx->width, codecCtx->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL,
+        frameRGB->width, frameRGB->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL,
         NULL, NULL)) == NULL) {
         ret = AVERROR_UNKNOWN;
         goto end;
@@ -101,18 +97,42 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
  //               goto end;
  //           }
             decode_packet(codecCtx, packet, frame, frameRGB, swsCtx);
-            create_bitmap(frameRGB->data[0], frameRGB->linesize[0], frameRGB->width, frameRGB->height, hbmp);
+            create_bitmap_from_frame(frameRGB, hbmp);
             break;
         }
         av_packet_unref(packet);
     }
 
-//    *hbmp = (HBITMAP)LoadImage(NULL, L"test.bmp",
-//        IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     ret = S_OK;
 end:
     clean_up(swsCtx, packet, frameRGB, frame, codecCtx, fmtCtx);
     return ret;
+}
+
+static int read_cb(void *opaque, uint8_t *buf, int bufSize) {
+    IStream *stream = (IStream *)opaque;
+    ULONG numBytes;
+    IStream_Read(stream, buf, bufSize, &numBytes);
+    if (numBytes == 0)
+        return AVERROR_EOF;
+    return numBytes;
+}
+
+static int64_t seek_cb(void *opaque, int64_t offset, int whence) {
+    IStream *stream = (IStream *)opaque;
+    if (whence & AVSEEK_SIZE) {
+        STATSTG stg;
+        if (IStream_Stat(stream, &stg, STATFLAG_DEFAULT) != S_OK)
+            return -1;
+        return stg.cbSize.QuadPart;
+    } else {
+        ULARGE_INTEGER newPosition;
+        LARGE_INTEGER _offset;
+        _offset.QuadPart = offset;
+        if (IStream_Seek(stream, _offset, whence, &newPosition) != S_OK)
+            return -1;
+        return newPosition.QuadPart;
+    }
 }
 
 /**
@@ -195,25 +215,33 @@ static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst)
     HRESULT ret;
     AVFrame *frameRGB = NULL;
     uint8_t *frameBuf = NULL;
+    float aspect = codecCtx->width / (float)codecCtx->height;
+    int frameWidth, frameHeight;
+    if (codecCtx->width > codecCtx->height) {
+        // landscape
+        frameWidth = cx;
+        frameHeight = cx / aspect;
+    } else {
+        // portrait
+        frameHeight = cx;
+        frameWidth = cx * aspect;
+    }
     if ((frameRGB = av_frame_alloc()) == NULL) {
         ret = E_OUTOFMEMORY;
         goto end;
     }
-    // FIXME: use cx
-    if ((ret = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codecCtx->width,
-        codecCtx->height, 1)) < 0) {
+    if ((ret = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frameWidth, frameHeight, 1)) < 0)
         goto end;
-    }
     frameBuf = av_malloc(ret);
     // This will set up frameRGB->data[0] to point at the same address as frameBuf
     // is pointing to, so when cleaning up we can just free frameRGB->data[0] and
     // don't need to pass frameBuf around.
     if ((ret = av_image_fill_arrays(frameRGB->data, frameRGB->linesize,
-        frameBuf, AV_PIX_FMT_RGB24, codecCtx->width, codecCtx->height, 1)) < 0) {
+        frameBuf, AV_PIX_FMT_RGB24, frameWidth, frameHeight, 1)) < 0) {
         goto end;
     }
-    frameRGB->width = codecCtx->width;
-    frameRGB->height = codecCtx->height;
+    frameRGB->width = frameWidth;
+    frameRGB->height = frameHeight;
     ret = S_OK;
     *dst = frameRGB;
 end:
@@ -226,17 +254,16 @@ end:
     return ret;
 }
 
-static HRESULT create_bitmap(uint8_t *data, int linesize, int width, int height,
-    OUT HBITMAP *hbmp) {
+static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
     HRESULT ret;
     unsigned char *bits;
     int i, c, y;
     BITMAPINFO bmi = { 0 };
     bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biWidth = frameRGB->width;
     // MSDN: If biHeight is negative, the bitmap is a top-down DIB with the origin at the
     //       upper left corner.
-    bmi.bmiHeader.biHeight = -height;
+    bmi.bmiHeader.biHeight = -frameRGB->height;
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
@@ -246,12 +273,13 @@ static HRESULT create_bitmap(uint8_t *data, int linesize, int width, int height,
         goto end;
     }
     unsigned int *bytes = bits;
-    for (i = 0; i < height; i++) {
+    for (i = 0; i < frameRGB->height; i++) {
         // linesize is just the size of a single line in bytes, i.e. for a 24-bit image
         // linesize = width * 3.
-        unsigned char *ch = (data + i * linesize);
-        for (c = 0; c < width; c++) {
-            bytes[i * width + c] = (ch[c * 3 + 0] << 16) | (ch[c * 3 + 1] << 8) | (ch[c * 3 + 2]);
+        unsigned char *ch = (frameRGB->data[0] + i * frameRGB->linesize[0]);
+        for (c = 0; c < frameRGB->width; c++) {
+            bytes[i * frameRGB->width + c] = (ch[c * 3 + 0] << 16) | (ch[c * 3 + 1] << 8)
+                | (ch[c * 3 + 2]);
         }
     }
     ret = S_OK;
@@ -312,31 +340,5 @@ static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frame
             avio_context_free(&fmtCtx->pb);
         }
         avformat_close_input(&fmtCtx);
-    }
-}
-
-static int read_cb(void *opaque, uint8_t *buf, int bufSize) {
-    IStream *stream = (IStream*)opaque;
-    ULONG numBytes;
-    IStream_Read(stream, buf, bufSize, &numBytes);
-    if (numBytes == 0)
-        return AVERROR_EOF;
-    return numBytes;
-}
-
-static int64_t seek_cb(void *opaque, int64_t offset, int whence) {
-    IStream *stream = (IStream*)opaque;
-    if (whence & AVSEEK_SIZE) {
-        STATSTG stg;
-        if (IStream_Stat(stream, &stg, STATFLAG_DEFAULT) != S_OK)
-            return -1;
-        return stg.cbSize.QuadPart;
-    } else {
-        ULARGE_INTEGER newPosition;
-        LARGE_INTEGER _offset;
-        _offset.QuadPart = offset;
-        if (IStream_Seek(stream, _offset, whence, &newPosition) != S_OK)
-            return -1;
-        return newPosition.QuadPart;
     }
 }
