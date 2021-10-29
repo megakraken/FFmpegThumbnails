@@ -93,7 +93,11 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
 
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
-            decode_packet(codecCtx, packet, frame, frameRGB, swsCtx, &frameFinished);
+            if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx,
+                &frameFinished)) < 0) {
+                av_packet_unref(packet);
+                goto end;
+            }
             if (frameFinished) {
                 create_bitmap_from_frame(frameRGB, hbmp);
                 break;
@@ -218,11 +222,11 @@ static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst)
     if (codecCtx->width > codecCtx->height) {
         // landscape
         frameWidth = cx;
-        frameHeight = cx / aspect;
+        frameHeight = (int)(cx / aspect);
     } else {
         // portrait
         frameHeight = cx;
-        frameWidth = cx * aspect;
+        frameWidth = (int)(cx * aspect);
     }
     if ((frameRGB = av_frame_alloc()) == NULL) {
         ret = E_OUTOFMEMORY;
@@ -264,7 +268,7 @@ static int seek_to(int seconds, AVFormatContext *fmtCtx, int streamIdx) {
 static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
     HRESULT ret;
     unsigned char *bits;
-    int i, c, y;
+    int i, c;
     BITMAPINFO bmi = { 0 };
     bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
     bmi.bmiHeader.biWidth = frameRGB->width;
@@ -282,7 +286,7 @@ static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
     printf("width %i\n", frameRGB->width);
     printf("height: %i\n", frameRGB->height);
     printf("linesize %i\n", frameRGB->linesize[0]);
-    unsigned int *bytes = bits;
+    unsigned int *bytes = (unsigned int*) bits;
     for (i = 0; i < frameRGB->height; i++) {
         // linesize is just the size of a single line in bytes, i.e. for a 24-bit image
         // linesize = width * 3.
@@ -313,7 +317,6 @@ static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *fr
             return 0;
         if (ret < 0)
             return ret;
-
         if ((ret = sws_scale(swsCtx, frame->data, frame->linesize,
             0, codecCtx->height, frameRGB->data, frameRGB->linesize)) < 0)
             return ret;
