@@ -38,6 +38,8 @@ static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *fr
     AVFrame *frameRGB, struct SwsContext *swsCtx);
 static HRESULT create_bitmap(uint8_t data, int linesize, int width, int height,
     OUT HBITMAP *hbmp);
+static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frameRGB,
+    AVFrame *frame, AVCodecContext *codecCtx, AVFormatContext *fmtCtx);
 
 /**
  * Gets a thumbnail for the video contained in the given stream.
@@ -54,12 +56,12 @@ static HRESULT create_bitmap(uint8_t data, int linesize, int width, int height,
  *                an HRESULT (or FFMPEG) error code.
  */
 HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
-    HRESULT ret = E_FAIL;
+    HRESULT ret;
     AVFormatContext *fmtCtx = NULL;
     AVCodecContext *codecCtx = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
-    int streamIdx = -1;
+    int streamIdx;
     struct SwsContext *swsCtx = NULL;
     if ((ret = create_format_context(stream, &fmtCtx)) < 0)
         goto end;
@@ -89,7 +91,8 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
     }
     // TODO: Seek to timestamp.
     // Extract frame.
-    // Convert RGB frame to DIB.
+    // Convert to RGB and resize frame.
+    // Convert to DIB.
 
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
@@ -100,32 +103,12 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
         }
         av_packet_unref(packet);
     }
-        
-    
+
     *hbmp = (HBITMAP)LoadImage(NULL, L"test.bmp",
         IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     ret = S_OK;
 end:
-    if (swsCtx)
-        sws_freeContext(swsCtx);
-    if (packet)
-        av_packet_free(&packet);
-    if (frameRGB) {
-        av_free(frameRGB->data[0]);
-        av_frame_free(&frameRGB);
-    }
-    if (frame)
-        av_frame_free(&frame);
-    if (codecCtx)
-        avcodec_free_context(&codecCtx);
-    if (fmtCtx) {
-        // We must also clean up the associated AVIOContext.
-        if (fmtCtx->pb) {
-            av_free(fmtCtx->pb->buffer);
-            avio_context_free(&fmtCtx->pb);
-        }
-        avformat_close_input(&fmtCtx);
-    }
+    clean_up(swsCtx, packet, frameRGB, frame, codecCtx, fmtCtx);
     return ret;
 }
 
@@ -156,7 +139,7 @@ void save_rgb_frame(unsigned char *buf, int wrap, int xsize, int ysize) {
  *                an HRESULT (or FFMPEG) error code.
  */
 static HRESULT create_format_context(IStream *stream, AVFormatContext **dst) {
-    HRESULT ret = E_FAIL;
+    HRESULT ret;
     int bufSize = 32768;
     AVIOContext *avioCtx = NULL;
     AVFormatContext *fmtCtx = NULL;
@@ -195,8 +178,8 @@ end:
 }
 
 static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst) {
-    HRESULT ret = E_FAIL;
-    const AVCodec *codec = NULL;
+    HRESULT ret;
+    const AVCodec *codec;
     AVCodecContext *codecCtx = NULL;
     if ((codec = avcodec_find_decoder(codecParams->codec_id)) == NULL) {
         ret = AVERROR_DECODER_NOT_FOUND;
@@ -221,7 +204,7 @@ end:
 }
 
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst) {
-    HRESULT ret = E_FAIL;
+    HRESULT ret;
     AVFrame *frameRGB = NULL;
     uint8_t *frameBuf = NULL;
     if ((frameRGB = av_frame_alloc()) == NULL) {
@@ -294,6 +277,30 @@ static int get_video_stream_index(AVFormatContext *ic) {
             return i;
     }
     return AVERROR_STREAM_NOT_FOUND;
+}
+
+static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frameRGB,
+    AVFrame *frame, AVCodecContext *codecCtx, AVFormatContext *fmtCtx) {
+    if (swsCtx)
+        sws_freeContext(swsCtx);
+    if (packet)
+        av_packet_free(&packet);
+    if (frameRGB) {
+        av_free(frameRGB->data[0]);
+        av_frame_free(&frameRGB);
+    }
+    if (frame)
+        av_frame_free(&frame);
+    if (codecCtx)
+        avcodec_free_context(&codecCtx);
+    if (fmtCtx) {
+        // We must also clean up the associated AVIOContext.
+        if (fmtCtx->pb) {
+            av_free(fmtCtx->pb->buffer);
+            avio_context_free(&fmtCtx->pb);
+        }
+        avformat_close_input(&fmtCtx);
+    }
 }
 
 static int read_cb(void *opaque, uint8_t *buf, int bufSize) {
