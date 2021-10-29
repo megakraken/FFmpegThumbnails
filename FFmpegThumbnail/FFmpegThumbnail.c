@@ -34,7 +34,7 @@ static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecConte
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
 static int seek_to(int seconds, AVFormatContext *fmtCtx, int streamIdx);
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
-    AVFrame *frameRGB, struct SwsContext *swsCtx);
+    AVFrame *frameRGB, struct SwsContext *swsCtx, int *frameFinished);
 static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp);
 static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frameRGB,
     AVFrame *frame, AVCodecContext *codecCtx, AVFormatContext *fmtCtx);
@@ -59,7 +59,7 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
     AVCodecContext *codecCtx = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
-    int streamIdx;
+    int streamIdx, frameFinished;
     struct SwsContext *swsCtx = NULL;
     if ((ret = create_format_context(stream, &fmtCtx)) < 0)
         goto end;
@@ -86,26 +86,21 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, OUT HBITMAP *hbmp) {
         ret = AVERROR_UNKNOWN;
         goto end;
     }
-    // TODO: Seek to timestamp.
-    // Extract frame.
-    // Convert to RGB and resize frame.
-    // Convert to DIB.
+    // TODO: figure out a good way to let user fine-tune when to generate the thumbnail.
+    //       either at the very beginning of the video or the middle perhaps.
     int seconds = 10;
     seek_to(10, fmtCtx, streamIdx);
 
     while (av_read_frame(fmtCtx, packet) >= 0) {
         if (packet->stream_index == streamIdx) {
-            // TODO: decode packet.
- //           if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx)) < 0) {
- //               goto end;
- //           }
-            decode_packet(codecCtx, packet, frame, frameRGB, swsCtx);
-            create_bitmap_from_frame(frameRGB, hbmp);
-            break;
+            decode_packet(codecCtx, packet, frame, frameRGB, swsCtx, &frameFinished);
+            if (frameFinished) {
+                create_bitmap_from_frame(frameRGB, hbmp);
+                break;
+            }
         }
         av_packet_unref(packet);
     }
-
     ret = S_OK;
 end:
     clean_up(swsCtx, packet, frameRGB, frame, codecCtx, fmtCtx);
@@ -284,6 +279,9 @@ static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
         ret = GetLastError();
         goto end;
     }
+    printf("width %i\n", frameRGB->width);
+    printf("height: %i\n", frameRGB->height);
+    printf("linesize %i\n", frameRGB->linesize[0]);
     unsigned int *bytes = bits;
     for (i = 0; i < frameRGB->height; i++) {
         // linesize is just the size of a single line in bytes, i.e. for a 24-bit image
@@ -304,8 +302,9 @@ end:
 }
 
 static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *frame,
-    AVFrame *frameRGB, struct SwsContext *swsCtx) {
+    AVFrame *frameRGB, struct SwsContext *swsCtx, int *frameFinished) {
     int ret;
+    *frameFinished = 0;
     if ((ret = avcodec_send_packet(codecCtx, packet)) < 0)
         return ret;
     while (ret >= 0) {
@@ -314,10 +313,11 @@ static int decode_packet(AVCodecContext *codecCtx, AVPacket *packet, AVFrame *fr
             return 0;
         if (ret < 0)
             return ret;
+
         if ((ret = sws_scale(swsCtx, frame->data, frame->linesize,
             0, codecCtx->height, frameRGB->data, frameRGB->linesize)) < 0)
             return ret;
-
+        *frameFinished = 1;
         return 0;
     }
     return ret;
