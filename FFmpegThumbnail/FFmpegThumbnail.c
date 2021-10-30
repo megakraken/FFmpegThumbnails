@@ -79,7 +79,7 @@ static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frame
  * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
  *                an HRESULT (or FFMPEG) error code.
  */
-HRESULT GetThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *hbmp) {
+HRESULT GetVideoThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *hbmp) {
     HRESULT ret;
     AVFormatContext *fmtCtx = NULL;
     AVCodecContext *codecCtx = NULL;

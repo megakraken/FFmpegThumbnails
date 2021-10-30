@@ -20,9 +20,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Dll.cpp" />
+    <ClCompile Include="FFmpegThumbnailProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="FFmpegThumbnailProvider.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FFmpegThumbnail\FFmpegThumbnail.vcxproj">
+      <Project>{f14250ad-983b-4c05-80da-8e81a7e30c20}</Project>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -84,6 +90,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>$(SolutionDir)\FFmpegThumbnail\FFmpeg\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

@@ -30,8 +30,11 @@
 #include <new>
 
 #pragma comment(lib, "shlwapi.lib")
+// I have no idea what this warning is supposed to tell me and StackOverflow doesn't
+// know either.
+#pragma warning(disable : 28251)
 
-extern HRESULT CRecipeThumbProvider_CreateInstance(REFIID riid, void **ppv);
+extern HRESULT FFmpegThumbProvider_CreateInstance(REFIID riid, void **ppv);
 
 #define SZ_CLSID_FFMPEGTHUMBHANDLER     L"{8D60D8ED-AC78-444B-9FC8-DDE8240A2A9B}"
 #define SZ_FFMPEGTHUMBHANDLER           L"Recipe Thumbnail Handler"
@@ -48,7 +51,7 @@ struct CLASS_OBJECT_INIT {
 // add classes supported by this module here
 const CLASS_OBJECT_INIT c_rgClassObjectInit[] =
 {
-    { &CLSID_FFmpegThumbHandler, CRecipeThumbProvider_CreateInstance }
+    { &CLSID_FFmpegThumbHandler, FFmpegThumbProvider_CreateInstance }
 };
 
 
@@ -154,7 +157,6 @@ STDAPI DllGetClassObject(REFCLSID clsid, REFIID riid, void **ppv) {
 }
 
 // A struct to hold the information required for a registry entry
-
 struct REGISTRY_ENTRY {
     HKEY   hkeyRoot;
     PCWSTR pszKeyName;
@@ -163,7 +165,6 @@ struct REGISTRY_ENTRY {
 };
 
 // Creates a registry key (if needed) and sets the default value of the key
-
 HRESULT CreateRegKeyAndSetValue(const REGISTRY_ENTRY *pRegistryEntry) {
     HKEY hKey;
     HRESULT hr = HRESULT_FROM_WIN32(RegCreateKeyExW(pRegistryEntry->hkeyRoot,
@@ -188,23 +189,41 @@ STDAPI DllRegisterServer() {
         hr = HRESULT_FROM_WIN32(GetLastError());
     } else {
         // List of registry entries we want to create
-        const REGISTRY_ENTRY rgRegistryEntries[] =
-        {
-            // RootKey            KeyName                                                                ValueName                     Data
-            {HKEY_CURRENT_USER,   L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER,                                 NULL,                           SZ_FFMPEGTHUMBHANDLER},
-            {HKEY_CURRENT_USER,   L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER L"\\InProcServer32",             NULL,                           szModuleName},
-            {HKEY_CURRENT_USER,   L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER L"\\InProcServer32",             L"ThreadingModel",              L"Apartment"},
-            {HKEY_CURRENT_USER,   L"Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}",            NULL,                           SZ_CLSID_FFMPEGTHUMBHANDLER},
+        const REGISTRY_ENTRY rgRegistryEntries[] = {
+            {
+                HKEY_CURRENT_USER,
+                L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER,
+                NULL,
+                SZ_FFMPEGTHUMBHANDLER
+            },
+            {
+                HKEY_CURRENT_USER,
+                L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER L"\\InProcServer32",
+                NULL,
+                szModuleName
+            },
+            {
+                HKEY_CURRENT_USER,
+                L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER L"\\InProcServer32",
+                L"ThreadingModel",
+                L"Apartment"
+            },
+            //{
+            //    HKEY_CURRENT_USER,
+            //    L"Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}",
+            //    NULL,
+            //    SZ_CLSID_FFMPEGTHUMBHANDLER
+            //},
         };
-
         hr = S_OK;
         for (int i = 0; i < ARRAYSIZE(rgRegistryEntries) && SUCCEEDED(hr); i++) {
             hr = CreateRegKeyAndSetValue(&rgRegistryEntries[i]);
         }
     }
     if (SUCCEEDED(hr)) {
-        // This tells the shell to invalidate the thumbnail cache.  This is important because any .recipe files
-        // viewed before registering this handler would otherwise show cached blank thumbnails.
+        // This tells the shell to invalidate the thumbnail cache.  This is important because
+        // any .recipe files viewed before registering this handler would otherwise show
+        // cached blank thumbnails.
         SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
     }
     return hr;
@@ -215,13 +234,10 @@ STDAPI DllRegisterServer() {
 //
 STDAPI DllUnregisterServer() {
     HRESULT hr = S_OK;
-
-    const PCWSTR rgpszKeys[] =
-    {
+    const PCWSTR rgpszKeys[] = {
         L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER,
-        L"Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
+        //L"Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
     };
-
     // Delete the registry entries
     for (int i = 0; i < ARRAYSIZE(rgpszKeys) && SUCCEEDED(hr); i++) {
         hr = HRESULT_FROM_WIN32(RegDeleteTreeW(HKEY_CURRENT_USER, rgpszKeys[i]));

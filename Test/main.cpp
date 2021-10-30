@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
         printf("Couldn't open file %s\n", argv[2]);
         return -1;
     }
-    if ((ret = GetThumbnail(stream, size, TS_BEGINNING, &bmp)) != S_OK) {
+    if ((ret = GetVideoThumbnail(stream, size, TS_BEGINNING, &bmp)) != S_OK) {
         printf("Error creating thumbnail: %i\n", ret);
         return -1;
     }

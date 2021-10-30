@@ -18,6 +18,9 @@
     <ClCompile Include="Dll.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FFmpegThumbnailProvider.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="FFmpegThumbnailProvider.def">
