@@ -22,7 +22,7 @@
  * Provides a single method that is called from the IThumbnailProvider to generate
  * and return a thumbnail as a HBITMAP for a given IStream.
  * 
- * FFmpeg version used is N-104431-g148c030395-20211027 (i.e. nightly from 27/10/2021).
+ * FFmpeg version used is 4.4.1.
  */
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
@@ -38,7 +38,6 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavcodec/defs.h>
 #include <libswscale/swscale.h>
 #include <libavutil/imgutils.h>
 #include <stdio.h>
