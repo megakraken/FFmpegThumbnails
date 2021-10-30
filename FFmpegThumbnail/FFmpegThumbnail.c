@@ -1,8 +1,28 @@
-/*
+/**
+ * Copyright (C) 2021 megakraken
+ *
+ * FFmpegThumbnails is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * FFmpegThumbnails is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with FFmpeg; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+/**
  * Contains the FFmpeg code to generate thumbnails for video files.
  *
  * Provides a single method that is called from the IThumbnailProvider to generate
  * and return a thumbnail as a HBITMAP for a given IStream.
+ * 
+ * FFmpeg version used is N-104431-g148c030395-20211027 (i.e. nightly from 27/10/2021).
  */
 #ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
