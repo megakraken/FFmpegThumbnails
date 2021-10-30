@@ -85,7 +85,7 @@ HRESULT GetThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *hbmp) {
     AVCodecContext *codecCtx = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
-    int streamIdx, frameFinished, duration;
+    int streamIdx, frameFinished;
     struct SwsContext *swsCtx = NULL;
     if ((ret = create_format_context(stream, &fmtCtx)) < 0)
         goto end;
