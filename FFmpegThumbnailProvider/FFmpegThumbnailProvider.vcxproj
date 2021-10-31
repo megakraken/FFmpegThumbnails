@@ -30,6 +30,9 @@
       <Project>{f14250ad-983b-4c05-80da-8e81a7e30c20}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FFmpegThumbnailProvider.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

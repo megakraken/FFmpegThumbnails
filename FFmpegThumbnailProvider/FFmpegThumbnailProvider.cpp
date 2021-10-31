@@ -23,11 +23,7 @@
   *
   */
 
-#include <shlwapi.h>
-#include <thumbcache.h>
-#include <new>
-#include "../FFmpegThumbnail/FFmpegThumbnail.h"
-
+#include "FFmpegThumbnailProvider.h"
 
 // this thumbnail provider implements IInitializeWithStream to enable being hosted
 // in an isolated process for robustness
@@ -73,6 +69,8 @@ public:
     IFACEMETHODIMP GetThumbnail(UINT cx, HBITMAP *phbmp, WTS_ALPHATYPE *pdwAlpha);
 
 private:
+    HRESULT _ReadConfigDword(LPCWSTR lpValueName, LPDWORD lpResult);
+
     long _cRef;
     IStream *_pStream;     // provided during initialization.
 };
@@ -97,8 +95,35 @@ IFACEMETHODIMP FFmpegThumbnailProvider::Initialize(IStream *pStream, DWORD) {
     return hr;
 }
 
+// Reads a value from the COM component's registration key.
+HRESULT FFmpegThumbnailProvider::_ReadConfigDword(LPCWSTR lpValueName, LPDWORD lpResult) {
+    HKEY hKey = NULL;
+    LRESULT ret;
+    DWORD pcbData = sizeof(DWORD);
+    if ((ret = RegOpenKeyExW(HKEY_CURRENT_USER,
+        L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER, 0,
+        KEY_READ, &hKey)) != ERROR_SUCCESS) {
+        goto end;
+    }
+    if ((ret = RegGetValue(hKey, NULL, lpValueName, RRF_RT_ANY, NULL, lpResult, &pcbData)) !=
+        ERROR_SUCCESS) {
+        goto end;
+    }
+    ret = ERROR_SUCCESS;
+end:
+    if (hKey != NULL)
+        RegCloseKey(hKey);
+    return HRESULT_FROM_WIN32(ret);
+}
+
 // IThumbnailProvider
 IFACEMETHODIMP FFmpegThumbnailProvider::GetThumbnail(UINT cx, HBITMAP *phbmp,
     WTS_ALPHATYPE *pdwAlpha) {
-    return GetVideoThumbnail(_pStream, cx, TS_BEGINNING, phbmp);
+    // FIXME: I don't know if the restrictive context our IThumbnailProvider runs in, allows
+    //        us to query registry value.
+    DWORD dwTimestamp;
+    HRESULT ret = _ReadConfigDword(L"ThumbnailTimestamp", &dwTimestamp);
+    if (ret != S_OK)
+        dwTimestamp = TS_BEGINNING;
+    return GetVideoThumbnail(_pStream, cx, dwTimestamp, phbmp);
 }

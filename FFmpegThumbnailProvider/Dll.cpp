@@ -23,24 +23,7 @@
   *
   */
 
-#include <objbase.h>
-#include <shlwapi.h>
-#include <thumbcache.h>
-#include <shlobj.h>
-#include <new>
-
-#pragma comment(lib, "shlwapi.lib")
-// I have no idea what this warning is supposed to tell me and StackOverflow doesn't
-// know either.
-#pragma warning(disable : 28251)
-
-extern HRESULT FFmpegThumbProvider_CreateInstance(REFIID riid, void **ppv);
-
-#define SZ_CLSID_FFMPEGTHUMBHANDLER     L"{8D60D8ED-AC78-444B-9FC8-DDE8240A2A9B}"
-#define SZ_FFMPEGTHUMBHANDLER           L"Recipe Thumbnail Handler"
-
-const CLSID CLSID_FFmpegThumbHandler = { 0x8d60d8ed, 0xac78, 0x444b,
-    { 0x9f, 0xc8, 0xdd, 0xe8, 0x24, 0xa, 0x2a, 0x9b } };
+#include "FFmpegThumbnailProvider.h"
 
 typedef HRESULT(*PFNCREATEINSTANCE)(REFIID riid, void **ppvObject);
 struct CLASS_OBJECT_INIT {
@@ -161,7 +144,9 @@ struct REGISTRY_ENTRY {
     HKEY   hkeyRoot;
     PCWSTR pszKeyName;
     PCWSTR pszValueName;
-    PCWSTR pszData;
+    DWORD  dwType;
+    LPVOID lpData;
+//    PCWSTR pszData;
 };
 
 // Creates a registry key (if needed) and sets the default value of the key
@@ -171,9 +156,13 @@ HRESULT CreateRegKeyAndSetValue(const REGISTRY_ENTRY *pRegistryEntry) {
         pRegistryEntry->pszKeyName, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL,
         &hKey, NULL));
     if (SUCCEEDED(hr)) {
-        hr = HRESULT_FROM_WIN32(RegSetValueExW(hKey, pRegistryEntry->pszValueName, 0, REG_SZ,
-            (LPBYTE)pRegistryEntry->pszData,
-            ((DWORD)wcslen(pRegistryEntry->pszData) + 1) * sizeof(WCHAR)));
+        DWORD cbData = pRegistryEntry->dwType == REG_DWORD ? sizeof(DWORD) :
+            ((DWORD)wcslen((PCWSTR)pRegistryEntry->lpData) + 1) * sizeof(WCHAR);
+        DWORD dwValue = (DWORD)pRegistryEntry->lpData;
+        LPBYTE lpData =  pRegistryEntry->dwType == REG_DWORD ? (LPBYTE)&dwValue :
+            (LPBYTE)pRegistryEntry->lpData;
+        hr = HRESULT_FROM_WIN32(RegSetValueExW(hKey, pRegistryEntry->pszValueName, 0,
+            pRegistryEntry->dwType, lpData, cbData));
         RegCloseKey(hKey);
     }
     return hr;
@@ -194,19 +183,29 @@ STDAPI DllRegisterServer() {
                 HKEY_CURRENT_USER,
                 L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER,
                 NULL,
-                SZ_FFMPEGTHUMBHANDLER
+                REG_SZ,
+                (LPVOID)SZ_FFMPEGTHUMBHANDLER
+            },
+            {
+                HKEY_CURRENT_USER,
+                L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER,
+                L"ThumbnailTimestamp",
+                REG_DWORD,
+                (LPVOID)TS_BEGINNING
             },
             {
                 HKEY_CURRENT_USER,
                 L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER L"\\InProcServer32",
                 NULL,
+                REG_SZ,
                 szModuleName
             },
             {
                 HKEY_CURRENT_USER,
                 L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER L"\\InProcServer32",
                 L"ThreadingModel",
-                L"Apartment"
+                REG_SZ,
+                (LPVOID)L"Apartment"
             },
             //{
             //    HKEY_CURRENT_USER,
