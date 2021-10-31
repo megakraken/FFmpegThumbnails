@@ -33,15 +33,18 @@ int main(int argc, char *argv[]) {
     HBITMAP bmp;
     if (argc < 3) {
         printf("You need to specify a size and a media file.\n");
-        printf("test.exe <size> <path-to-media-file>\n");
+        printf("test.exe <size> <path-to-media-file> [<timestamp>]\n");
         return -1;
     }
     size = atoi(argv[1]);
+    DWORD dwTimestamp = TS_BEGINNING;
+    if (argc > 3)
+        dwTimestamp = atoi(argv[3]);
     if ((ret = SHCreateStreamOnFileA(argv[2], STGM_READ, &stream)) != S_OK) {
         printf("Couldn't open file %s\n", argv[2]);
         return -1;
     }
-    if ((ret = GetVideoThumbnail(stream, size, TS_BEGINNING, &bmp)) != S_OK) {
+    if ((ret = GetVideoThumbnail(stream, size, dwTimestamp, &bmp)) != S_OK) {
         printf("Error creating thumbnail: %i\n", ret);
         return -1;
     }
