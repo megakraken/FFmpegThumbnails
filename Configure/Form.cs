@@ -25,5 +25,29 @@ namespace Configure {
                 );
             }
         }
+
+        private void uninstall_Click(object sender, EventArgs e) {
+            try {
+                Config.Uninstall();
+                MessageBox.Show(this, "FFmpegThumbnailHandler has been installed.", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            } catch (Exception ex) {
+                MessageBox.Show(this, ex.ToString(), "Error installing FFmpegThumbnailHandler",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error
+                );
+            }
+        }
+
+        private void clear_cache_Click(object sender, EventArgs e) {
+            try {
+                Config.ClearThumbnailCache();
+                MessageBox.Show(this, "Thumbnail Cache has been cleared.", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            } catch (Exception ex) {
+                MessageBox.Show(this, ex.ToString(), "Error clearing Thu,bnail Cache",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error
+                );
+            }
+        }
     }
 }

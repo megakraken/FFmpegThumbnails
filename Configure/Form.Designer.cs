@@ -84,6 +84,7 @@ namespace Configure {
             this.clear_cache.TabIndex = 35;
             this.clear_cache.Text = "Clear Cache";
             this.clear_cache.UseVisualStyleBackColor = true;
+            this.clear_cache.Click += new System.EventHandler(this.clear_cache_Click);
             // 
             // groupBox2
             // 
@@ -209,6 +210,7 @@ namespace Configure {
             this.uninstall.TabIndex = 32;
             this.uninstall.Text = "Uninstall";
             this.uninstall.UseVisualStyleBackColor = true;
+            this.uninstall.Click += new System.EventHandler(this.uninstall_Click);
             // 
             // label8
             // 

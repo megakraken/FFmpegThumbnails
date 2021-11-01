@@ -10,6 +10,11 @@ namespace Configure {
     /// as well as some other configuration options.
     /// </summary>
     public static class Config {
+        static readonly string[] Extensions = {
+            "3g2", "3gp", "asf", "avi", "flv", "m4v", "mkv", "mov", "mp4", "m4p", "mpg",
+            "mp2", "mpe", "mpeg", "mpv", "m2v", "ts", "ogv", "vob", "webm", "wmv"
+        };
+
         [DllImport("Shell32.dll")]
         static extern int SHChangeNotify(int eventId, uint flags, IntPtr dwItem1, IntPtr dwItem2);
 
@@ -35,7 +40,7 @@ namespace Configure {
             // 1. Invoke regsvr32.exe
             var ret = InvokeRegSvr32(Dll);
             if (ret != 0)
-                throw new Exception($"Registration of {Dll} failed with RegSvr32 error-code {ret}.");
+                throw new Exception($"Registration of {Dll} failed with error-code {ret}.");
             // 2. Set up file-type associations. Possibly save old values so we can properly
             //    restore them upon uninstallation.
 
@@ -56,7 +61,6 @@ namespace Configure {
             // 3. Restart explorer.exe
             RestartExplorer();
         }
-
 
         /// <summary>
         /// Clears the Windows Thumbnail Cache so that thumbnails for file-types will be
@@ -94,13 +98,33 @@ namespace Configure {
             // Set stuff in registry.
         }
 
+        public static IEnumerable<string> GetExtensions() {
+            return Extensions;
+        }
+
         public static IDictionary<string, bool> GetFileAssociations() {
+            var ret = new Dictionary<string, bool>();
+            foreach (var ext in Extensions) {
+                // {E357FCCD-A995-4576-B01F-234630154E96} is the CLSID for
+                // IThumbnailProvider implementations.
+                var path = $@"HKEY_CURRENT_USER\Software\Classes\.{ext}\ShellEx\" +
+                    "{e357fccd-a995-4576-b01f-234630154e96}";
+                // "Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
+                // if has value of our CLSID
+                var value = Registry.GetValue(path, null, null);
+                ret.Add(
+                    ext,
+                    Clsid.Equals(value?.ToString(), StringComparison.InvariantCultureIgnoreCase)
+                );
+            }
             // Read stuff from registry.
-            return null;
+            return ret;
         }
 
         public static void SetFileAssociations(IDictionary<string, bool> dict) {
             // Set stuff in registry.
+            foreach (var p in dict) {
+            }
         }
 
         /// <summary>
