@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Configure")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Configuration utility for FFmpegThumbnailProvider")]
+[assembly: AssemblyDescription("Configuration utility for FFmpegThumbnailProvider")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyCompany("megakraken")]
 [assembly: AssemblyProduct("Configure")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2021")]
+[assembly: AssemblyCopyright("Copyright © megakraken 2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

@@ -24,6 +24,7 @@ namespace Configure {
         /// the contents of this method with the code editor.
         /// </summary>
         private void InitializeComponent() {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form));
             this.clear_cache = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.label13 = new System.Windows.Forms.Label();
@@ -228,6 +229,7 @@ namespace Configure {
             this.install.TabIndex = 30;
             this.install.Text = "Install";
             this.install.UseVisualStyleBackColor = true;
+            this.install.Click += new System.EventHandler(this.install_Click);
             // 
             // apply
             // 
@@ -584,6 +586,7 @@ namespace Configure {
             this.Controls.Add(this.label2);
             this.Controls.Add(this.groupBox1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Form";

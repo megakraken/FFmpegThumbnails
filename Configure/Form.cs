@@ -13,5 +13,17 @@ namespace Configure {
         public Form() {
             InitializeComponent();
         }
+
+        private void install_Click(object sender, EventArgs e) {
+            try {
+                Config.Install();
+                MessageBox.Show(this, "FFmpegThumbnailHandler has been installed.", "Success",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            } catch (Exception ex) {
+                MessageBox.Show(this, ex.ToString(), "Error installing FFmpegThumbnailHandler",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error
+                );
+            }
+        }
     }
 }
