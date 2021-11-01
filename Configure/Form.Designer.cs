@@ -26,9 +26,9 @@ namespace Configure {
         private void InitializeComponent() {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form));
             this.clear_cache = new System.Windows.Forms.Button();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.thumbnails = new System.Windows.Forms.GroupBox();
             this.label13 = new System.Windows.Forms.Label();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.seconds = new System.Windows.Forms.TextBox();
             this.label12 = new System.Windows.Forms.Label();
             this.label11 = new System.Windows.Forms.Label();
             this.label10 = new System.Windows.Forms.Label();
@@ -43,11 +43,11 @@ namespace Configure {
             this.apply = new System.Windows.Forms.Button();
             this.label7 = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
-            this.path = new System.Windows.Forms.Label();
+            this.installationPath = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.status = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.fileTypes = new System.Windows.Forms.GroupBox();
             this.ext_webm = new System.Windows.Forms.CheckBox();
             this.ext_wmv = new System.Windows.Forms.CheckBox();
             this.ext_vob = new System.Windows.Forms.CheckBox();
@@ -71,8 +71,8 @@ namespace Configure {
             this.ext_all = new System.Windows.Forms.CheckBox();
             this.ext_asf = new System.Windows.Forms.CheckBox();
             this.ext_3g2 = new System.Windows.Forms.CheckBox();
-            this.groupBox2.SuspendLayout();
-            this.groupBox1.SuspendLayout();
+            this.thumbnails.SuspendLayout();
+            this.fileTypes.SuspendLayout();
             this.SuspendLayout();
             // 
             // clear_cache
@@ -86,24 +86,24 @@ namespace Configure {
             this.clear_cache.UseVisualStyleBackColor = true;
             this.clear_cache.Click += new System.EventHandler(this.clear_cache_Click);
             // 
-            // groupBox2
+            // thumbnails
             // 
-            this.groupBox2.Controls.Add(this.label13);
-            this.groupBox2.Controls.Add(this.textBox1);
-            this.groupBox2.Controls.Add(this.label12);
-            this.groupBox2.Controls.Add(this.label11);
-            this.groupBox2.Controls.Add(this.label10);
-            this.groupBox2.Controls.Add(this.ts_custom);
-            this.groupBox2.Controls.Add(this.ts_middle);
-            this.groupBox2.Controls.Add(this.ts_beginning);
-            this.groupBox2.Controls.Add(this.ts_first);
-            this.groupBox2.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox2.Location = new System.Drawing.Point(253, 243);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(486, 151);
-            this.groupBox2.TabIndex = 34;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Thumbnail Timestamp";
+            this.thumbnails.Controls.Add(this.label13);
+            this.thumbnails.Controls.Add(this.seconds);
+            this.thumbnails.Controls.Add(this.label12);
+            this.thumbnails.Controls.Add(this.label11);
+            this.thumbnails.Controls.Add(this.label10);
+            this.thumbnails.Controls.Add(this.ts_custom);
+            this.thumbnails.Controls.Add(this.ts_middle);
+            this.thumbnails.Controls.Add(this.ts_beginning);
+            this.thumbnails.Controls.Add(this.ts_first);
+            this.thumbnails.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.thumbnails.Location = new System.Drawing.Point(253, 243);
+            this.thumbnails.Name = "thumbnails";
+            this.thumbnails.Size = new System.Drawing.Size(486, 151);
+            this.thumbnails.TabIndex = 34;
+            this.thumbnails.TabStop = false;
+            this.thumbnails.Text = "Thumbnail Timestamp";
             // 
             // label13
             // 
@@ -113,15 +113,17 @@ namespace Configure {
             this.label13.TabIndex = 8;
             this.label13.Text = "seconds into the video";
             // 
-            // textBox1
+            // seconds
             // 
-            this.textBox1.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.textBox1.Location = new System.Drawing.Point(143, 112);
-            this.textBox1.Margin = new System.Windows.Forms.Padding(0);
-            this.textBox1.Multiline = true;
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(30, 22);
-            this.textBox1.TabIndex = 7;
+            this.seconds.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.seconds.Location = new System.Drawing.Point(143, 112);
+            this.seconds.Margin = new System.Windows.Forms.Padding(0);
+            this.seconds.Multiline = true;
+            this.seconds.Name = "seconds";
+            this.seconds.Size = new System.Drawing.Size(30, 22);
+            this.seconds.TabIndex = 7;
+            this.seconds.TextChanged += new System.EventHandler(this.seconds_TextChanged);
+            this.seconds.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.seconds_KeyPress);
             // 
             // label12
             // 
@@ -235,6 +237,7 @@ namespace Configure {
             // 
             // apply
             // 
+            this.apply.Enabled = false;
             this.apply.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.apply.Location = new System.Drawing.Point(643, 400);
             this.apply.Name = "apply";
@@ -242,6 +245,7 @@ namespace Configure {
             this.apply.TabIndex = 29;
             this.apply.Text = "Apply";
             this.apply.UseVisualStyleBackColor = true;
+            this.apply.Click += new System.EventHandler(this.apply_Click);
             // 
             // label7
             // 
@@ -265,16 +269,16 @@ namespace Configure {
             this.label6.TabIndex = 27;
             this.label6.Text = "Warning";
             // 
-            // path
+            // installationPath
             // 
-            this.path.AutoSize = true;
-            this.path.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.path.ForeColor = System.Drawing.Color.CornflowerBlue;
-            this.path.Location = new System.Drawing.Point(365, 41);
-            this.path.Name = "path";
-            this.path.Size = new System.Drawing.Size(190, 17);
-            this.path.TabIndex = 26;
-            this.path.Text = "C:\\Windows\\system32\\igfm.exe";
+            this.installationPath.AutoSize = true;
+            this.installationPath.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.installationPath.ForeColor = System.Drawing.Color.CornflowerBlue;
+            this.installationPath.Location = new System.Drawing.Point(365, 41);
+            this.installationPath.Name = "installationPath";
+            this.installationPath.Size = new System.Drawing.Size(190, 17);
+            this.installationPath.TabIndex = 26;
+            this.installationPath.Text = "C:\\Windows\\system32\\igfm.exe";
             // 
             // label4
             // 
@@ -307,38 +311,38 @@ namespace Configure {
             this.label2.TabIndex = 23;
             this.label2.Text = "FFmpegThumbnailHandler is currently";
             // 
-            // groupBox1
+            // fileTypes
             // 
-            this.groupBox1.Controls.Add(this.ext_webm);
-            this.groupBox1.Controls.Add(this.ext_wmv);
-            this.groupBox1.Controls.Add(this.ext_vob);
-            this.groupBox1.Controls.Add(this.ext_mp2);
-            this.groupBox1.Controls.Add(this.ext_mpe);
-            this.groupBox1.Controls.Add(this.ext_mpg);
-            this.groupBox1.Controls.Add(this.ext_ogv);
-            this.groupBox1.Controls.Add(this.ext_mpv);
-            this.groupBox1.Controls.Add(this.ext_ts);
-            this.groupBox1.Controls.Add(this.ext_m2v);
-            this.groupBox1.Controls.Add(this.ext_mpeg);
-            this.groupBox1.Controls.Add(this.ext_m4p);
-            this.groupBox1.Controls.Add(this.ext_mkv);
-            this.groupBox1.Controls.Add(this.ext_mp4);
-            this.groupBox1.Controls.Add(this.ext_mov);
-            this.groupBox1.Controls.Add(this.ext_m4v);
-            this.groupBox1.Controls.Add(this.ext_flv);
-            this.groupBox1.Controls.Add(this.label1);
-            this.groupBox1.Controls.Add(this.ext_3gp);
-            this.groupBox1.Controls.Add(this.ext_avi);
-            this.groupBox1.Controls.Add(this.ext_all);
-            this.groupBox1.Controls.Add(this.ext_asf);
-            this.groupBox1.Controls.Add(this.ext_3g2);
-            this.groupBox1.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.groupBox1.Location = new System.Drawing.Point(12, 16);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(210, 415);
-            this.groupBox1.TabIndex = 22;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "File Type Associations";
+            this.fileTypes.Controls.Add(this.ext_webm);
+            this.fileTypes.Controls.Add(this.ext_wmv);
+            this.fileTypes.Controls.Add(this.ext_vob);
+            this.fileTypes.Controls.Add(this.ext_mp2);
+            this.fileTypes.Controls.Add(this.ext_mpe);
+            this.fileTypes.Controls.Add(this.ext_mpg);
+            this.fileTypes.Controls.Add(this.ext_ogv);
+            this.fileTypes.Controls.Add(this.ext_mpv);
+            this.fileTypes.Controls.Add(this.ext_ts);
+            this.fileTypes.Controls.Add(this.ext_m2v);
+            this.fileTypes.Controls.Add(this.ext_mpeg);
+            this.fileTypes.Controls.Add(this.ext_m4p);
+            this.fileTypes.Controls.Add(this.ext_mkv);
+            this.fileTypes.Controls.Add(this.ext_mp4);
+            this.fileTypes.Controls.Add(this.ext_mov);
+            this.fileTypes.Controls.Add(this.ext_m4v);
+            this.fileTypes.Controls.Add(this.ext_flv);
+            this.fileTypes.Controls.Add(this.label1);
+            this.fileTypes.Controls.Add(this.ext_3gp);
+            this.fileTypes.Controls.Add(this.ext_avi);
+            this.fileTypes.Controls.Add(this.ext_all);
+            this.fileTypes.Controls.Add(this.ext_asf);
+            this.fileTypes.Controls.Add(this.ext_3g2);
+            this.fileTypes.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.fileTypes.Location = new System.Drawing.Point(12, 16);
+            this.fileTypes.Name = "fileTypes";
+            this.fileTypes.Size = new System.Drawing.Size(210, 415);
+            this.fileTypes.TabIndex = 22;
+            this.fileTypes.TabStop = false;
+            this.fileTypes.Text = "File Type Associations";
             // 
             // ext_webm
             // 
@@ -547,6 +551,7 @@ namespace Configure {
             this.ext_all.TabIndex = 3;
             this.ext_all.Text = "Select all";
             this.ext_all.UseVisualStyleBackColor = true;
+            this.ext_all.CheckedChanged += new System.EventHandler(this.ext_all_CheckedChanged);
             // 
             // ext_asf
             // 
@@ -574,7 +579,7 @@ namespace Configure {
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(753, 450);
             this.Controls.Add(this.clear_cache);
-            this.Controls.Add(this.groupBox2);
+            this.Controls.Add(this.thumbnails);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.uninstall);
             this.Controls.Add(this.label8);
@@ -582,21 +587,22 @@ namespace Configure {
             this.Controls.Add(this.apply);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.label6);
-            this.Controls.Add(this.path);
+            this.Controls.Add(this.installationPath);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.status);
             this.Controls.Add(this.label2);
-            this.Controls.Add(this.groupBox1);
+            this.Controls.Add(this.fileTypes);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Form";
             this.Text = "Configuration";
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
+            this.Load += new System.EventHandler(this.Form_Load);
+            this.thumbnails.ResumeLayout(false);
+            this.thumbnails.PerformLayout();
+            this.fileTypes.ResumeLayout(false);
+            this.fileTypes.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -605,9 +611,9 @@ namespace Configure {
         #endregion
 
         private System.Windows.Forms.Button clear_cache;
-        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.GroupBox thumbnails;
         private System.Windows.Forms.Label label13;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox seconds;
         private System.Windows.Forms.Label label12;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.Label label10;
@@ -622,11 +628,11 @@ namespace Configure {
         private System.Windows.Forms.Button apply;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Label path;
+        private System.Windows.Forms.Label installationPath;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label status;
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.GroupBox fileTypes;
         private System.Windows.Forms.CheckBox ext_webm;
         private System.Windows.Forms.CheckBox ext_wmv;
         private System.Windows.Forms.CheckBox ext_vob;

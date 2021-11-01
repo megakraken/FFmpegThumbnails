@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace Configure {
     /// <summary>
@@ -83,7 +84,10 @@ namespace Configure {
         /// installed/registered.
         /// </returns>
         public static string GetInstallationPath() {
-            return Registry.GetValue(RegPath + @"\InProcServer32", null, null)?.ToString();
+            var value = Registry.GetValue(RegPath + @"\InProcServer32", null, null);
+            if (value == null)
+                return null;
+            return Path.GetDirectoryName(value.ToString());
         }
 
         public static int GetThumbnailTimestamp() {
@@ -104,26 +108,17 @@ namespace Configure {
 
         public static IDictionary<string, bool> GetFileAssociations() {
             var ret = new Dictionary<string, bool>();
-            foreach (var ext in Extensions) {
-                // {E357FCCD-A995-4576-B01F-234630154E96} is the CLSID for
-                // IThumbnailProvider implementations.
-                var path = $@"HKEY_CURRENT_USER\Software\Classes\.{ext}\ShellEx\" +
-                    "{e357fccd-a995-4576-b01f-234630154e96}";
-                // "Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
-                // if has value of our CLSID
-                var value = Registry.GetValue(path, null, null);
-                ret.Add(
-                    ext,
-                    Clsid.Equals(value?.ToString(), StringComparison.InvariantCultureIgnoreCase)
-                );
-            }
-            // Read stuff from registry.
+            foreach (var ext in Extensions)
+                ret[ext] = IsAssociated(ext);
             return ret;
         }
 
         public static void SetFileAssociations(IDictionary<string, bool> dict) {
             // Set stuff in registry.
             foreach (var p in dict) {
+                if (p.Value) {
+
+                }
             }
         }
 
@@ -158,6 +153,29 @@ namespace Configure {
             foreach (var p in Process.GetProcessesByName("explorer"))
                 p.Kill();
             Process.Start("explorer.exe");
+        }
+
+        /// <summary>
+        /// Gets whether the specified file extension is associated to our
+        /// IThumbnailProvider.
+        /// </summary>
+        /// <param name="extension">
+        /// The file extension.
+        /// </param>
+        /// <returns>
+        /// true if the file extension is associated to the FFmpegThumbnailProvider; otherwise
+        /// false.
+        /// </returns>
+        static bool IsAssociated(string extension) {
+            // {E357FCCD-A995-4576-B01F-234630154E96} is the CLSID for
+            // IThumbnailProvider implementations.
+            var path = $@"HKEY_CURRENT_USER\Software\Classes\.{extension}\ShellEx\" +
+                "{e357fccd-a995-4576-b01f-234630154e96}";
+            // "Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
+            // if has value of our CLSID
+            var value = Registry.GetValue(path, null, null);
+            return Clsid.Equals(value?.ToString(),
+                StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }
