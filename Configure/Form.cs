@@ -91,10 +91,6 @@ namespace Configure {
             installationPath.Text = path;
         }
 
-        private void seconds_TextChanged(object sender, EventArgs e) {
-
-        }
-
         private void seconds_KeyPress(object sender, KeyPressEventArgs e) {
             if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar))
                 e.Handled = true;

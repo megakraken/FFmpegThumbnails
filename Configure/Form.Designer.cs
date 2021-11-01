@@ -41,8 +41,8 @@ namespace Configure {
             this.label8 = new System.Windows.Forms.Label();
             this.install = new System.Windows.Forms.Button();
             this.apply = new System.Windows.Forms.Button();
-            this.label7 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
+            this.warning_2 = new System.Windows.Forms.Label();
+            this.warning_1 = new System.Windows.Forms.Label();
             this.installationPath = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.status = new System.Windows.Forms.Label();
@@ -122,7 +122,6 @@ namespace Configure {
             this.seconds.Name = "seconds";
             this.seconds.Size = new System.Drawing.Size(30, 22);
             this.seconds.TabIndex = 7;
-            this.seconds.TextChanged += new System.EventHandler(this.seconds_TextChanged);
             this.seconds.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.seconds_KeyPress);
             // 
             // label12
@@ -247,36 +246,35 @@ namespace Configure {
             this.apply.UseVisualStyleBackColor = true;
             this.apply.Click += new System.EventHandler(this.apply_Click);
             // 
-            // label7
+            // warning_2
             // 
-            this.label7.AutoSize = true;
-            this.label7.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label7.Location = new System.Drawing.Point(246, 92);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(483, 17);
-            this.label7.TabIndex = 28;
-            this.label7.Text = "Files don\'t exist under installation path. Please reinstall FFmpegThumbnailHandle" +
+            this.warning_2.AutoSize = true;
+            this.warning_2.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.warning_2.Location = new System.Drawing.Point(246, 92);
+            this.warning_2.Name = "warning_2";
+            this.warning_2.Size = new System.Drawing.Size(483, 17);
+            this.warning_2.TabIndex = 28;
+            this.warning_2.Text = "Files don\'t exist under installation path. Please reinstall FFmpegThumbnailHandle" +
     "r.";
             // 
-            // label6
+            // warning_1
             // 
-            this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label6.ForeColor = System.Drawing.Color.Coral;
-            this.label6.Location = new System.Drawing.Point(246, 70);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(57, 17);
-            this.label6.TabIndex = 27;
-            this.label6.Text = "Warning";
+            this.warning_1.AutoSize = true;
+            this.warning_1.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.warning_1.ForeColor = System.Drawing.Color.Coral;
+            this.warning_1.Location = new System.Drawing.Point(246, 70);
+            this.warning_1.Name = "warning_1";
+            this.warning_1.Size = new System.Drawing.Size(57, 17);
+            this.warning_1.TabIndex = 27;
+            this.warning_1.Text = "Warning";
             // 
             // installationPath
             // 
-            this.installationPath.AutoSize = true;
             this.installationPath.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.installationPath.ForeColor = System.Drawing.Color.CornflowerBlue;
             this.installationPath.Location = new System.Drawing.Point(365, 41);
             this.installationPath.Name = "installationPath";
-            this.installationPath.Size = new System.Drawing.Size(190, 17);
+            this.installationPath.Size = new System.Drawing.Size(364, 38);
             this.installationPath.TabIndex = 26;
             this.installationPath.Text = "C:\\Windows\\system32\\igfm.exe";
             // 
@@ -585,8 +583,8 @@ namespace Configure {
             this.Controls.Add(this.label8);
             this.Controls.Add(this.install);
             this.Controls.Add(this.apply);
-            this.Controls.Add(this.label7);
-            this.Controls.Add(this.label6);
+            this.Controls.Add(this.warning_2);
+            this.Controls.Add(this.warning_1);
             this.Controls.Add(this.installationPath);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.status);
@@ -626,8 +624,8 @@ namespace Configure {
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.Button install;
         private System.Windows.Forms.Button apply;
-        private System.Windows.Forms.Label label7;
-        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label warning_2;
+        private System.Windows.Forms.Label warning_1;
         private System.Windows.Forms.Label installationPath;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label status;

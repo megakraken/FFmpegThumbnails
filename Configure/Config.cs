@@ -152,7 +152,7 @@ namespace Configure {
             Process.GetProcessesByName("explorer");
             foreach (var p in Process.GetProcessesByName("explorer"))
                 p.Kill();
-            Process.Start("explorer.exe");
+//            Process.Start("explorer.exe");
         }
 
         /// <summary>
