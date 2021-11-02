@@ -24,6 +24,7 @@ namespace Configure {
         /// the contents of this method with the code editor.
         /// </summary>
         private void InitializeComponent() {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form));
             this.clear_cache = new System.Windows.Forms.Button();
             this.thumbnails = new System.Windows.Forms.GroupBox();
@@ -50,6 +51,7 @@ namespace Configure {
             this.fileTypes = new System.Windows.Forms.GroupBox();
             this.label1 = new System.Windows.Forms.Label();
             this.ext_all = new System.Windows.Forms.CheckBox();
+            this.toolTip = new System.Windows.Forms.ToolTip(this.components);
             this.thumbnails.SuspendLayout();
             this.fileTypes.SuspendLayout();
             this.SuspendLayout();
@@ -62,6 +64,9 @@ namespace Configure {
             this.clear_cache.Size = new System.Drawing.Size(96, 31);
             this.clear_cache.TabIndex = 35;
             this.clear_cache.Text = "Clear Cache";
+            this.toolTip.SetToolTip(this.clear_cache, "Clears the Windows Thumbnail Cache. This will cause\r\nall Thumbnails to be regener" +
+        "ated.\r\n\r\nYou should do this after changing the Thumbnail\r\nTimestamp setting for " +
+        "changes to take effect.");
             this.clear_cache.UseVisualStyleBackColor = true;
             this.clear_cache.Click += new System.EventHandler(this.clear_cache_Click);
             // 
@@ -320,6 +325,11 @@ namespace Configure {
             this.ext_all.UseVisualStyleBackColor = true;
             this.ext_all.CheckedChanged += new System.EventHandler(this.ext_all_CheckedChanged);
             // 
+            // toolTip
+            // 
+            this.toolTip.AutomaticDelay = 0;
+            this.toolTip.ShowAlways = true;
+            // 
             // Form
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -382,6 +392,7 @@ namespace Configure {
         private System.Windows.Forms.GroupBox fileTypes;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.CheckBox ext_all;
+        private System.Windows.Forms.ToolTip toolTip;
     }
 }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace Configure {
@@ -31,28 +32,28 @@ namespace Configure {
         private void install_Click(object sender, EventArgs e) {
             try {
                 Config.Install();
-                MessageBox.Show(this, "FFmpegThumbnailHandler has been installed.", "Success",
+                MessageBox.Show(this, "FFmpegThumbnailProvider has been installed.", "Success",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
-                MessageBox.Show(this, ex.ToString(), "Error installing FFmpegThumbnailHandler",
+                MessageBox.Show(this, ex.ToString(), "Error installing FFmpegThumbnailProvider",
                     MessageBoxButtons.OK, MessageBoxIcon.Error
                 );
             } finally {
-                UpdateStatus();
+                UpdateControls();
             }
         }
 
         private void uninstall_Click(object sender, EventArgs e) {
             try {
                 Config.Uninstall();
-                MessageBox.Show(this, "FFmpegThumbnailHandler has been removed.", "Success",
+                MessageBox.Show(this, "FFmpegThumbnailProvider has been removed.", "Success",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
-                MessageBox.Show(this, ex.ToString(), "Error uninstalling FFmpegThumbnailHandler",
+                MessageBox.Show(this, ex.ToString(), "Error uninstalling FFmpegThumbnailProvider",
                     MessageBoxButtons.OK, MessageBoxIcon.Error
                 );
             } finally {
-                UpdateStatus();
+                UpdateControls();
             }
         }
 
@@ -62,18 +63,39 @@ namespace Configure {
                 MessageBox.Show(this, "Thumbnail Cache has been cleared.", "Success",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
-                MessageBox.Show(this, ex.ToString(), "Error clearing Thu,bnail Cache",
+                MessageBox.Show(this, ex.ToString(), "Error clearing Thumbnail Cache",
                     MessageBoxButtons.OK, MessageBoxIcon.Error
                 );
             }
         }
 
         private void apply_Click(object sender, EventArgs e) {
+            int timestamp = -1;
+            foreach (var c in thumbnails.Controls) {
+                if (c is RadioButton rb) {
+                    if (rb.Checked) {
+                        if (rb.Tag != null) {
+                            timestamp = int.Parse(rb.Tag.ToString(), NumberStyles.HexNumber);
+                        } else {
+                            int.TryParse(seconds.Text, out timestamp);
+                        }
+                    }
+                }
+            }
+            if (timestamp != -1)
+                Config.SetThumbnailTimestamp(timestamp);
+            foreach (var c in fileTypes.Controls) {
+                if (c is CheckBox cb) {
+                    if (cb == ext_all)
+                        continue;
+                    Config.SetFileAssociation(cb.Text, cb.Checked);
+                }
+            }
             apply.Enabled = false;
         }
 
         private void Form_Load(object sender, EventArgs e) {
-            UpdateStatus();
+            UpdateControls();
             foreach (var c in thumbnails.Controls) {
                 if (c is RadioButton rb)
                     rb.CheckedChanged += (s, _) => apply.Enabled = true;
@@ -89,7 +111,7 @@ namespace Configure {
             }
         }
 
-        void UpdateStatus() {
+        void UpdateControls() {
             var path = Config.GetInstallationPath();
             var installed = !string.IsNullOrEmpty(path);
             uninstall.Enabled = installed;
@@ -99,33 +121,28 @@ namespace Configure {
             } else {
                 status.Text = "installed";
                 status.ForeColor = Color.LimeGreen;
-
-                const int ThumbnailFirstFrame = unchecked((int)0x80000001);
-                const int ThumbnailBeginning  = unchecked((int)0x80000002);
-                const int ThumbnailMiddle     = unchecked((int)0x80000003);
-                int timestamp = Config.GetThumbnailTimestamp();
-
-                switch (timestamp) {
-                    case ThumbnailFirstFrame:
-                        ts_first.Checked = true;
-                        break;
-                    case ThumbnailBeginning:
-                        ts_beginning.Checked = true;
-                        break;
-                    case ThumbnailMiddle:
-                        ts_middle.Checked = true;
-                        break;
-                    case -1:
-                        break;
-                    default:
-                        if (timestamp > 0) {
-                            ts_custom.Checked = true;
-                            seconds.Text = timestamp.ToString();
-                        }
-                        break;
-                }
             }
             installationPath.Text = path;
+
+            var timestamp = Config.GetThumbnailTimestamp();
+            if (timestamp > 0) {
+                ts_custom.Checked = true;
+                seconds.Text = timestamp.ToString();
+            } else {
+                var rb = new[] { ts_first, ts_beginning, ts_middle };
+                foreach (var r in rb)
+                    r.Checked = int.Parse(r.Tag.ToString(), NumberStyles.HexNumber) == timestamp;
+            }
+
+            foreach (var c in fileTypes.Controls) {
+                if (c is CheckBox cb)
+                    cb.Enabled = installed;
+            }
+            foreach (Control c in thumbnails.Controls) {
+                if (c is RadioButton || c is TextBox)
+                    c.Enabled = installed;
+            }
+            apply.Enabled = false;
         }
 
         private void seconds_KeyPress(object sender, KeyPressEventArgs e) {

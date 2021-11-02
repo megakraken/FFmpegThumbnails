@@ -93,6 +93,13 @@ namespace Configure {
             return Path.GetDirectoryName(value.ToString());
         }
 
+        /// <summary>
+        /// Gets the value of the ThumbnailTimestamp Registry setting that determines how
+        /// thumbnails are generated for video files.
+        /// </summary>
+        /// <returns>
+        /// The ThumbnailTimestamp value as stored in the Registry.
+        /// </returns>
         public static int GetThumbnailTimestamp() {
             var val = Registry.GetValue(RegPath, "ThumbnailTimestamp", -1);
             if (val == null)
@@ -100,11 +107,25 @@ namespace Configure {
             return (int)val;
         }
 
+        /// <summary>
+        /// Sets the value of the ThumbnailTimestamp Registry setting to the specified
+        /// value.
+        /// </summary>
+        /// <param name="value">
+        /// The value to set the ThumbnailTimestamp Registry setting to.
+        /// </param>
         public static void SetThumbnailTimestamp(int value) {
             Registry.SetValue(RegPath, "ThumbnailTimestamp", value);
-            // Set stuff in registry.
         }
 
+        /// <summary>
+        /// Gets a map of file-type associations for the thumbnail provider.
+        /// </summary>
+        /// <returns>
+        /// A map of file-type associations with the file extension as key and a bool as
+        /// value that is true if the respective file-type is associated with our
+        /// FFmpegThumbnailProvider, or false otherwise.
+        /// </returns>
         public static IDictionary<string, bool> GetFileAssociations() {
             var ret = new Dictionary<string, bool>();
             foreach (var ext in Extensions)
@@ -112,17 +133,35 @@ namespace Configure {
             return ret;
         }
 
-        public static void SetFileAssociations(IDictionary<string, bool> dict) {
-            foreach (var p in dict) {
-                if (IsAssociated(p.Key)) {
-                    if (!p.Value) {
-                        // Restore old values if any.
-                    }
+        /// <summary>
+        /// Sets the specified file-type to be associated or dissociated with our
+        /// FFmpegThumbnailProvder.
+        /// </summary>
+        /// <param name="ext">
+        /// The extension of the file-type to configure.
+        /// </param>
+        /// <param name="associate">
+        /// true to associate the file-type to our IThumbnailProvider or false to
+        /// dissociate it.
+        /// </param>
+        public static void SetFileAssociation(string ext, bool associate) {
+            var path = Path.Combine(GetAppDirectory(), "Registry");
+            Directory.CreateDirectory(path);
+            var backup = Path.Combine(path, $"{ext}.old");
+            var current = IsAssociated(ext);
+            // Set association and save old value.
+            if (!current && associate) {
+                var old = SetAssociated(ext, Clsid);
+                if (old != null)
+                    File.WriteAllText(backup, old);
+            } else if (current && !associate) {
+                // Restore old value.
+                if (File.Exists(backup)) {
+                    var old = File.ReadAllText(backup);
+                    SetAssociated(ext, old);
+                    File.Delete(backup);
                 } else {
-                    if (p.Value) {
-                        // Save old values if any.
-                        // Associate.
-                    }
+                    SetAssociated(ext, string.Empty);
                 }
             }
         }
@@ -172,13 +211,49 @@ namespace Configure {
         /// false.
         /// </returns>
         static bool IsAssociated(string extension) {
+            return Clsid.Equals(GetAssociated(extension),
+                StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        /// <summary>
+        /// Gets the CLSID of the IThumbnailProvider associated with the specified extension.
+        /// </summary>
+        /// <param name="extension">
+        /// The extension to get the CLSID of the associated IThumbnailProvider for.
+        /// </param>
+        /// <returns>
+        /// The CLSID of the associated IThumbnailProvider or null if none is configured.
+        /// </returns>
+        static string GetAssociated(string extension) {
             // {E357FCCD-A995-4576-B01F-234630154E96} is the CLSID for
             // IThumbnailProvider implementations.
             var path = $@"HKEY_CURRENT_USER\Software\Classes\.{extension}\ShellEx\" +
                 "{e357fccd-a995-4576-b01f-234630154e96}";
-            var value = Registry.GetValue(path, null, null);
-            return Clsid.Equals(value?.ToString(),
-                StringComparison.InvariantCultureIgnoreCase);
+            return Registry.GetValue(path, null, null)?.ToString();
+        }
+
+        /// <summary>
+        /// Sets the IThumbnailProvider that is used by Explorer for the specified extension
+        /// to the specified value.
+        /// </summary>
+        /// <param name="extension">
+        /// The extension to set the IThumbnailProvider CLSID for.
+        /// </param>
+        /// <param name="value">
+        /// The CLSID of the IThumbnailProvider implementation to use.
+        /// </param>
+        /// <returns>
+        /// The CLSID of the old IThumbnailProvider if any was configured, or null if none
+        /// was configured.
+        /// </returns>
+        static string SetAssociated(string extension, string value) {
+            // {E357FCCD-A995-4576-B01F-234630154E96} is the CLSID for
+            // IThumbnailProvider implementations.
+            var path = $@"HKEY_CURRENT_USER\Software\Classes\.{extension}\ShellEx\" +
+                "{e357fccd-a995-4576-b01f-234630154e96}";
+            var old = Registry.GetValue(path, null, null)?.ToString();
+            Registry.SetValue(path, null, value);
+            return old;
         }
 
         /// <summary>
