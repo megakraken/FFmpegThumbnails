@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using System.IO;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace Configure {
@@ -60,8 +63,6 @@ namespace Configure {
         private void clear_cache_Click(object sender, EventArgs e) {
             try {
                 Config.ClearThumbnailCache();
-                MessageBox.Show(this, "Thumbnail Cache has been cleared.", "Success",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
             } catch (Exception ex) {
                 MessageBox.Show(this, ex.ToString(), "Error clearing Thumbnail Cache",
                     MessageBoxButtons.OK, MessageBoxIcon.Error
@@ -133,7 +134,6 @@ namespace Configure {
                 foreach (var r in rb)
                     r.Checked = int.Parse(r.Tag.ToString(), NumberStyles.HexNumber) == timestamp;
             }
-
             foreach (var c in fileTypes.Controls) {
                 if (c is CheckBox cb)
                     cb.Enabled = installed;
@@ -141,6 +141,25 @@ namespace Configure {
             foreach (Control c in thumbnails.Controls) {
                 if (c is RadioButton || c is TextBox)
                     c.Enabled = installed;
+            }
+            if (installed) {
+                var provider = Path.Combine(path, "FFmpegThumbnailProvider.dll");
+                if (!File.Exists(provider)) {
+                    info_label.Text = "Warning";
+                    info_label.ForeColor = Color.Coral;
+                    info_text.Text =
+                        "Files don't exist under installation path. Please reinstall FFmpegThumbnailHandler.";
+                } else {
+                    var info = FileVersionInfo.GetVersionInfo(provider);
+                    info_label.Text = "Version Information (installed)";
+                    info_label.ForeColor = Color.LimeGreen;
+                    info_text.Text = info.ProductName;
+                }
+            } else {
+                var info = FileVersionInfo.GetVersionInfo(Assembly.GetEntryAssembly().Location);
+                info_label.Text = "Version Information (contained)";
+                info_label.ForeColor = Color.Coral;
+                info_text.Text = info.ProductName;
             }
             apply.Enabled = false;
         }

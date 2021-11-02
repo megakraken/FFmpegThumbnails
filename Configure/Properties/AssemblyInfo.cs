@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("Configuration utility for FFmpegThumbnailProvider")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("megakraken")]
-[assembly: AssemblyProduct("Configure")]
+[assembly: AssemblyProduct("FFmpeg 4.4.1")]
 [assembly: AssemblyCopyright("Copyright © megakraken 2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

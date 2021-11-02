@@ -32,6 +32,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FFmpegThumbnailProvider.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

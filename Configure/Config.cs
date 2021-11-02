@@ -59,7 +59,8 @@ namespace Configure {
             if (ret != 0)
                 throw new Exception($"Unregistration of {Dll} failed with error-code {ret}.");
             // 2. Clear/Restore any file-type associations.
-
+            foreach (var ext in Extensions)
+                SetFileAssociation(ext, false);
             // 3. Restart explorer.exe
             RestartExplorer();
             // 4. Remove Application Directory.
@@ -73,10 +74,16 @@ namespace Configure {
         public static void ClearThumbnailCache() {
             const int SHCNE_ASSOCCHANGED = 0x08000000;
             const int SHCNF_FLUSH = 0x1000;
-            // 1. Invalidate Windows Thumbnail Cache.
+            // I thought this was enough to invalidate the Thumbnail Cache but it doesn't
+            // seem to be doing anything.
             SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_FLUSH, IntPtr.Zero, IntPtr.Zero);
-            // 2. Restart explorer.exe
-            RestartExplorer();
+            // Windows caches generated thumbnails in .db files saved under
+            // AppData\Local\Microsoft\Windows\Explorer.
+            // Sadly it's a PITA to try to delete them because Explorer keeps them locked and
+            // you can't just kill Explorer because Windows will automatically restart it and to
+            // change that you need elevated permissions etc. etc. so let's just launch the
+            // "Disk Cleanup" utility instead and let the user do it themselves.
+            Process.Start("cleanmgr.exe");
         }
 
         /// <summary>
@@ -196,6 +203,7 @@ namespace Configure {
             Process.GetProcessesByName("explorer");
             foreach (var p in Process.GetProcessesByName("explorer"))
                 p.Kill();
+            // Windows automatically restarts explorer when you kill it...
 //            Process.Start("explorer.exe");
         }
 
