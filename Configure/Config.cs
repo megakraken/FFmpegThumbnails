@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Configure {
     /// <summary>
@@ -20,7 +22,7 @@ namespace Configure {
         static extern int SHChangeNotify(int eventId, uint flags, IntPtr dwItem1, IntPtr dwItem2);
 
         /// <summary>
-        /// The CLSID of our FFmpegThumbnailProvider .
+        /// The CLSID of our FFmpegThumbnailProvider.
         /// </summary>
         const string Clsid = "{8D60D8ED-AC78-444B-9FC8-DDE8240A2A9B}";
 
@@ -38,13 +40,12 @@ namespace Configure {
         /// Installs the FFmpegThumbnailProvider with Windows Explorer.
         /// </summary>
         public static void Install() {
-            // 1. Invoke regsvr32.exe
-            var ret = InvokeRegSvr32(Dll);
+            // 1. Extract the embedded files into our application's AppData directory.
+            ExtractResources();
+            // 2. Invoke regsvr32.exe
+            var ret = InvokeRegSvr32(true);
             if (ret != 0)
                 throw new Exception($"Registration of {Dll} failed with error-code {ret}.");
-            // 2. Set up file-type associations. Possibly save old values so we can properly
-            //    restore them upon uninstallation.
-
             // 3. Restart explorer.exe
             RestartExplorer();
         }
@@ -54,13 +55,15 @@ namespace Configure {
         /// </summary>
         public static void Uninstall() {
             // 1. Invoke regsvr32.exe
-            var ret = InvokeRegSvr32(Dll, false);
+            var ret = InvokeRegSvr32(false);
             if (ret != 0)
                 throw new Exception($"Unregistration of {Dll} failed with error-code {ret}.");
             // 2. Clear/Restore any file-type associations.
 
             // 3. Restart explorer.exe
             RestartExplorer();
+            // 4. Remove Application Directory.
+            Directory.Delete(GetAppDirectory(), true);
         }
 
         /// <summary>
@@ -102,10 +105,6 @@ namespace Configure {
             // Set stuff in registry.
         }
 
-        public static IEnumerable<string> GetExtensions() {
-            return Extensions;
-        }
-
         public static IDictionary<string, bool> GetFileAssociations() {
             var ret = new Dictionary<string, bool>();
             foreach (var ext in Extensions)
@@ -114,10 +113,16 @@ namespace Configure {
         }
 
         public static void SetFileAssociations(IDictionary<string, bool> dict) {
-            // Set stuff in registry.
             foreach (var p in dict) {
-                if (p.Value) {
-
+                if (IsAssociated(p.Key)) {
+                    if (!p.Value) {
+                        // Restore old values if any.
+                    }
+                } else {
+                    if (p.Value) {
+                        // Save old values if any.
+                        // Associate.
+                    }
                 }
             }
         }
@@ -125,19 +130,19 @@ namespace Configure {
         /// <summary>
         /// Invokes the 'regsvr32' utility and returns it's exit-code.
         /// </summary>
-        /// <param name="name">
-        /// The name of the DLL to register.
-        /// </param>
         /// <param name="install">
         /// true to install the DLL, or false to uninstall it.
         /// </param>
         /// <returns>
         /// The exit-code returned by the 'regsvr32' process.
         /// </returns>
-        static int InvokeRegSvr32(string name, bool install = true) {
+        static int InvokeRegSvr32(bool install) {
             using (var p = new Process()) {
+                var path = Path.Combine(
+                    GetAppDirectory(), Dll
+                );
                 p.StartInfo.FileName = "regsvr32.exe";
-                p.StartInfo.Arguments = install ? $"/s {name}" : $"/s /u {name}";
+                p.StartInfo.Arguments = install ? $"/s {path}" : $"/s /u {path}";
                 p.StartInfo.UseShellExecute = false;
                 p.Start();
                 p.WaitForExit();
@@ -171,11 +176,45 @@ namespace Configure {
             // IThumbnailProvider implementations.
             var path = $@"HKEY_CURRENT_USER\Software\Classes\.{extension}\ShellEx\" +
                 "{e357fccd-a995-4576-b01f-234630154e96}";
-            // "Software\\Classes\\.recipe\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"
-            // if has value of our CLSID
             var value = Registry.GetValue(path, null, null);
             return Clsid.Equals(value?.ToString(),
                 StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        /// <summary>
+        /// Returns the application directory where we keep our files.
+        /// </summary>
+        /// <returns>
+        /// The application directory under appData.
+        /// </returns>
+        static string GetAppDirectory() {
+            return Path.Combine(
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.LocalApplicationData
+                ),
+                "FFmpegThumbnailProvider"
+            );
+        }
+
+        /// <summary>
+        /// Extracts the embedded FFmpeg binaries and our FFmpegThumbnailHandler DLL into
+        /// our application directory.
+        /// </summary>
+        static void ExtractResources() {
+            var path = GetAppDirectory();
+            Directory.CreateDirectory(path);
+            var asm = Assembly.GetExecutingAssembly();
+            foreach (var n in asm.GetManifestResourceNames()) {
+                var m = Regex.Match(n, $@"^{nameof(Configure)}\.Resources\.(.+)");
+                if (!m.Success)
+                    continue;
+                var filename = m.Groups[1].Value;
+                var dstPath = Path.Combine(path, filename);
+                using (var fs = File.Create(dstPath)) {
+                    using (var s = asm.GetManifestResourceStream(n))
+                        s.CopyTo(fs);
+                }
+            }
         }
     }
 }

@@ -1,17 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Configure {
     public partial class Form : System.Windows.Forms.Form {
         public Form() {
             InitializeComponent();
+            AddExtensionCheckboxes();
+        }
+
+        void AddExtensionCheckboxes() {
+            int l = 10, t = 108, h = 23, w = 80,
+                numRow = 12, i = 0;
+            foreach(var pair in Config.GetFileAssociations()) {
+                var col = (int)(i / (double)numRow);
+                var cb = new CheckBox {
+                    Name = $"ext_{pair.Key}",
+                    Text = pair.Key,
+                    Checked = pair.Value,
+                    UseVisualStyleBackColor = true,
+                    Location = new Point(l + col * w, t + (i % numRow) * h),
+                    Size = new Size(70, 21),
+                };
+                cb.CheckedChanged += (s, _) => apply.Enabled = true;
+                fileTypes.Controls.Add(cb);
+                i++;
+            }
         }
 
         private void install_Click(object sender, EventArgs e) {
@@ -60,10 +74,6 @@ namespace Configure {
 
         private void Form_Load(object sender, EventArgs e) {
             UpdateStatus();
-            foreach (var c in fileTypes.Controls) {
-                if (c is CheckBox cb)
-                    cb.CheckedChanged += (s, _) => apply.Enabled = true;
-            }
             foreach (var c in thumbnails.Controls) {
                 if (c is RadioButton rb)
                     rb.CheckedChanged += (s, _) => apply.Enabled = true;
@@ -81,12 +91,39 @@ namespace Configure {
 
         void UpdateStatus() {
             var path = Config.GetInstallationPath();
-            if (string.IsNullOrEmpty(path)) {
+            var installed = !string.IsNullOrEmpty(path);
+            uninstall.Enabled = installed;
+            if (installed == false) {
                 status.Text = "not installed";
                 status.ForeColor = Color.Red;
             } else {
                 status.Text = "installed";
-                status.ForeColor = Color.Green;
+                status.ForeColor = Color.LimeGreen;
+
+                const int ThumbnailFirstFrame = unchecked((int)0x80000001);
+                const int ThumbnailBeginning  = unchecked((int)0x80000002);
+                const int ThumbnailMiddle     = unchecked((int)0x80000003);
+                int timestamp = Config.GetThumbnailTimestamp();
+
+                switch (timestamp) {
+                    case ThumbnailFirstFrame:
+                        ts_first.Checked = true;
+                        break;
+                    case ThumbnailBeginning:
+                        ts_beginning.Checked = true;
+                        break;
+                    case ThumbnailMiddle:
+                        ts_middle.Checked = true;
+                        break;
+                    case -1:
+                        break;
+                    default:
+                        if (timestamp > 0) {
+                            ts_custom.Checked = true;
+                            seconds.Text = timestamp.ToString();
+                        }
+                        break;
+                }
             }
             installationPath.Text = path;
         }
