@@ -1,4 +1,22 @@
-﻿using Microsoft.Win32;
+﻿/**
+ * Copyright (C) 2021 megakraken
+ *
+ * FFmpegThumbnails is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * FFmpegThumbnails is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with FFmpeg; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,6 +24,7 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Configure {
     /// <summary>
@@ -80,10 +99,24 @@ namespace Configure {
             // Windows caches generated thumbnails in .db files saved under
             // AppData\Local\Microsoft\Windows\Explorer.
             // Sadly it's a PITA to try to delete them because Explorer keeps them locked and
-            // you can't just kill Explorer because Windows will automatically restart it and to
-            // change that you need elevated permissions etc. etc. so let's just launch the
-            // "Disk Cleanup" utility instead and let the user do it themselves.
-            Process.Start("cleanmgr.exe");
+            // you can't just kill Explorer because Windows will automatically restart it so
+            // we have to use the Restart Manager API to do it.
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Microsoft", "Windows", "Explorer"
+            );
+            using (var rm = new RestartManagerSession()) {
+                rm.RegisterProcess(Process.GetProcessesByName("explorer"));
+                try {
+                    rm.Shutdown(RestartManagerSession.ShutdownType.Normal);
+                    Thread.Sleep(100);
+                    foreach (var f in Directory.GetFiles(path, "*.db"))
+                        File.Delete(f);
+                    Thread.Sleep(100);
+                } finally {
+                    rm.Restart();
+                }
+            }
         }
 
         /// <summary>
@@ -199,7 +232,7 @@ namespace Configure {
         /// <summary>
         /// Restarts the Windows explorer process.
         /// </summary>
-        static void RestartExplorer() {
+        public static void RestartExplorer() {
             Process.GetProcessesByName("explorer");
             foreach (var p in Process.GetProcessesByName("explorer"))
                 p.Kill();

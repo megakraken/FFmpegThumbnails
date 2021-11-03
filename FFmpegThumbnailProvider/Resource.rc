@@ -78,12 +78,12 @@ BEGIN
         BLOCK "040704b0"
         BEGIN
             VALUE "CompanyName", "megakraken"
-            VALUE "FileDescription", "FFmpegThumbnailProvider (Based on FFmpeg n4.4.1)"
+            VALUE "FileDescription", "FFmpegThumbnailProvider 1.0 (Based on FFmpeg n4.4.1)"
             VALUE "FileVersion", "1.0.0.1"
             VALUE "InternalName", "FFmpegThumbnailProvider.dll"
             VALUE "LegalCopyright", "Copyright (C) 2021"
             VALUE "OriginalFilename", "FFmpegThumbnailProvider.dll"
-            VALUE "ProductName", "FFmpegThumbnailProvider (Based on FFmpeg n4.4.1)"
+            VALUE "ProductName", "FFmpegThumbnailProvider 1.0 (Based on FFmpeg n4.4.1)"
             VALUE "ProductVersion", "1.0.0.1"
         END
     END
