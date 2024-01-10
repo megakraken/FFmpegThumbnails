@@ -201,7 +201,7 @@ namespace Configure {
                     SetAssociated(ext, old);
                     File.Delete(backup);
                 } else {
-                    SetAssociated(ext, string.Empty);
+                    SetAssociated(ext, null);
                 }
             }
         }
@@ -290,10 +290,17 @@ namespace Configure {
         static string SetAssociated(string extension, string value) {
             // {E357FCCD-A995-4576-B01F-234630154E96} is the CLSID for
             // IThumbnailProvider implementations.
-            var path = $@"HKEY_CURRENT_USER\Software\Classes\.{extension}\ShellEx\" +
+            var path = $@"Software\Classes\.{extension}\ShellEx\" +
                 "{e357fccd-a995-4576-b01f-234630154e96}";
-            var old = Registry.GetValue(path, null, null)?.ToString();
-            Registry.SetValue(path, null, value);
+            var key = $@"HKEY_CURRENT_USER\{path}";
+            var old = Registry.GetValue(key, null, null)?.ToString();
+            if (value != null) {
+                Registry.SetValue(key, null, value);
+            } else {
+                // The key must be deleted for Windows to fall back to the
+                // default provider.
+                Registry.CurrentUser.DeleteSubKey(path);
+            }
             return old;
         }
 
