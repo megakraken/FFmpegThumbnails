@@ -40,7 +40,7 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -118,7 +118,7 @@
     <EmbeddedResource Include="..\FFmpegThumbnail\FFmpeg\bin\swscale-5.dll">
       <Link>Resources\swscale-5.dll</Link>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\x64\Debug\FFmpegThumbnailProvider.dll">
+    <EmbeddedResource Include="..\x64\Release\FFmpegThumbnailProvider.dll">
       <Link>Resources\FFmpegThumbnailProvider.dll</Link>
     </EmbeddedResource>
     <Content Include="icon.ico" />
