@@ -103,6 +103,7 @@ namespace Configure {
             }
             if (timestamp != -1)
                 Config.SetThumbnailTimestamp(timestamp);
+            Config.SetUseCover(cover.Checked);
             foreach (var c in fileTypes.Controls) {
                 if (c is CheckBox cb) {
                     if (cb == ext_all)
@@ -122,6 +123,7 @@ namespace Configure {
                 if (c is TextBox tb)
                     tb.TextChanged += (s, _) => apply.Enabled = true;
             }
+            cover.CheckedChanged += (s, _) => apply.Enabled = true;
         }
 
         private void ext_all_CheckedChanged(object sender, EventArgs e) {
@@ -161,6 +163,8 @@ namespace Configure {
                 if (c is RadioButton || c is TextBox)
                     c.Enabled = installed;
             }
+            cover.Enabled = installed;
+            cover.Checked = Config.GetUseCover();
             if (installed) {
                 var provider = Path.Combine(path, "FFmpegThumbnailProvider.dll");
                 if (!File.Exists(provider)) {

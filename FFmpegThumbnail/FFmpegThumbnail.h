@@ -40,24 +40,27 @@ extern "C" {
     /**
      * Gets a thumbnail for the video contained in the given stream.
      *
-     * @param stream  A pointer to an IStream interface that represents the stream
-     *                source that contains the video.
-     * @param cx      The maximum thumbnail size, in pixels. The returned bitmap should
-     *                fit into a square of width and height cx, though it does not need
-     *                to be a square image.
-     * @param ts      The timestamp at which to generate the thumbnail within the video
-     *                file. Can be either a positive value to denote an offset in seconds,
-     *                or one of the following values:
-     *                TS_FIRSTFRAME - Generate thumbnail from the very first video frame.
-     *                TS_BEGINNING  - Generate thumbnail from the beginning of the video.
-     *                TS_MIDDLE     - Generate thumbnail from the middle of the video.
-     * @param hbmp    When this function returns, contains a pointer to the thumbnail
-     *                image handle. The image is a DIB section and 32 bits per pixel.
+     * @param stream    A pointer to an IStream interface that represents the stream
+     *                  source that contains the video.
+     * @param cx        The maximum thumbnail size, in pixels. The returned bitmap should
+     *                  fit into a square of width and height cx, though it does not need
+     *                  to be a square image.
+     * @param ts        The timestamp at which to generate the thumbnail within the video
+     *                  file. Can be either a positive value to denote an offset in seconds,
+     *                  or one of the following values:
+     *                  TS_FIRSTFRAME - Generate thumbnail from the very first video frame.
+     *                  TS_BEGINNING  - Generate thumbnail from the beginning of the video.
+     *                  TS_MIDDLE     - Generate thumbnail from the middle of the video.
+     * @param useCover  If TRUE, look for an embedded cover image first and fall back to
+                        generating thumbnail from video otherwise.
+     * @param hbmp      When this function returns, contains a pointer to the thumbnail
+     *                  image handle. The image is a DIB section and 32 bits per pixel.
      *
      * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
      *                an HRESULT (or FFMPEG) error code.
      */
-    HRESULT GetVideoThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *thumbnail);
+    HRESULT GetVideoThumbnail(IN IStream* stream, int cx, int ts, BOOL useCover,
+        OUT HBITMAP* hbmp);
 #ifdef __cplusplus
 }
 #endif  /* __cplusplus */

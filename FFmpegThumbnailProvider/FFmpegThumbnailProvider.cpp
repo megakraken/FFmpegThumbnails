@@ -98,7 +98,7 @@ IFACEMETHODIMP FFmpegThumbnailProvider::Initialize(IStream *pStream, DWORD) {
 // Reads a value from the COM component's registration key.
 HRESULT FFmpegThumbnailProvider::_ReadConfigDword(LPCWSTR lpValueName, LPDWORD lpResult) {
     HKEY hKey = NULL;
-    LRESULT ret;
+    LSTATUS ret;
     DWORD pcbData = sizeof(DWORD);
     if ((ret = RegOpenKeyExW(HKEY_CURRENT_USER,
         L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER, 0,
@@ -119,11 +119,10 @@ end:
 // IThumbnailProvider
 IFACEMETHODIMP FFmpegThumbnailProvider::GetThumbnail(UINT cx, HBITMAP *phbmp,
     WTS_ALPHATYPE *pdwAlpha) {
-    // FIXME: I don't know if the restrictive context our IThumbnailProvider runs in, allows
-    //        us to query registry value.
-    DWORD dwTimestamp;
+    DWORD dwTimestamp, dwUseCover;
     HRESULT ret = _ReadConfigDword(L"ThumbnailTimestamp", &dwTimestamp);
     if (ret != S_OK)
         dwTimestamp = TS_BEGINNING;
-    return GetVideoThumbnail(_pStream, cx, dwTimestamp, phbmp);
+    _ReadConfigDword(L"UseCover", &dwUseCover);
+    return GetVideoThumbnail(_pStream, cx, dwTimestamp, dwUseCover, phbmp);
 }

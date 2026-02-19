@@ -50,6 +50,7 @@
 
 static HRESULT create_format_context(IStream *stream, AVFormatContext **dst);
 static int get_video_stream_index(AVFormatContext *ic);
+static int get_attached_pic_stream_index(AVFormatContext* ic);
 static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst);
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
 static int seek_to_ts(int ts, AVFormatContext *fmtCtx, int streamIdx);
@@ -62,36 +63,46 @@ static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frame
 /**
  * Gets a thumbnail for the video contained in the given stream.
  * 
- * @param stream  A pointer to an IStream interface that represents the stream
- *                source that contains the video.
- * @param cx      The maximum thumbnail size, in pixels. The returned bitmap should
- *                fit into a square of width and height cx, though it does not need
- *                to be a square image.
- * @param ts      The timestamp at which to generate the thumbnail within the video
- *                file. Can be either a positive value to denote an offset in seconds,
- *                or one of the following values:
- *                TS_FIRSTFRAME - Generate thumbnail from the very first video frame.
- *                TS_BEGINNING  - Generate thumbnail from the beginning of the video.
- *                TS_MIDDLE     - Generate thumbnail from the middle of the video.
- * @param hbmp    When this function returns, contains a pointer to the thumbnail
- *                image handle. The image is a DIB section and 32 bits per pixel.
+ * @param stream    A pointer to an IStream interface that represents the stream
+ *                  source that contains the video.
+ * @param cx        The maximum thumbnail size, in pixels. The returned bitmap should
+ *                  fit into a square of width and height cx, though it does not need
+ *                  to be a square image.
+ * @param ts        The timestamp at which to generate the thumbnail within the video
+ *                  file. Can be either a positive value to denote an offset in seconds,
+ *                  or one of the following values:
+ *                  TS_FIRSTFRAME - Generate thumbnail from the very first video frame.
+ *                  TS_BEGINNING  - Generate thumbnail from the beginning of the video.
+ *                  TS_MIDDLE     - Generate thumbnail from the middle of the video.
+ * @param useCover  If TRUE, look for an embedded cover image first and fall back to
+                    generating thumbnail from video otherwise.
+ * @param hbmp      When this function returns, contains a pointer to the thumbnail
+ *                  image handle. The image is a DIB section and 32 bits per pixel.
  * 
- * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
- *                an HRESULT (or FFMPEG) error code.
+ * @return          If this function succeeds, it returns S_OK. Otherwise, it returns
+ *                  an HRESULT (or FFMPEG) error code.
  */
-HRESULT GetVideoThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *hbmp) {
+HRESULT GetVideoThumbnail(IN IStream *stream, int cx, int ts, BOOL useCover,
+    OUT HBITMAP *hbmp) {
     HRESULT ret;
     AVFormatContext *fmtCtx = NULL;
     AVCodecContext *codecCtx = NULL;
     AVFrame *frame = NULL, *frameRGB = NULL;
     AVPacket *packet = NULL;
     int streamIdx, frameFinished;
+    BOOL hasCover = FALSE;
     struct SwsContext *swsCtx = NULL;
     if ((ret = create_format_context(stream, &fmtCtx)) < 0)
         goto end;
-    if ((ret = get_video_stream_index(fmtCtx)) < 0)
-        goto end;
-    streamIdx = ret;
+    if (useCover) {
+        streamIdx = get_attached_pic_stream_index(fmtCtx);
+        hasCover = streamIdx >= 0;
+    }
+    if (!hasCover) {
+        if ((ret = get_video_stream_index(fmtCtx)) < 0)
+            goto end;
+        streamIdx = ret;
+    }
     if ((ret = create_codec_context(
         fmtCtx->streams[streamIdx]->codecpar, &codecCtx)) < 0) {
         goto end;
@@ -112,22 +123,35 @@ HRESULT GetVideoThumbnail(IN IStream *stream, int cx, int ts, OUT HBITMAP *hbmp)
         ret = AVERROR_UNKNOWN;
         goto end;
     }
-    if ((ret = seek_to_ts(ts, fmtCtx, streamIdx)) < 0)
-        goto end;
-    while (av_read_frame(fmtCtx, packet) >= 0) {
-        if (packet->stream_index == streamIdx) {
-            if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx,
-                &frameFinished)) < 0) {
-                av_packet_unref(packet);
-                goto end;
+    if (hasCover) {
+        if ((ret = av_packet_ref(packet,
+            &fmtCtx->streams[streamIdx]->attached_pic)) < 0)
+            goto end;
+        if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx,
+            &frameFinished)) < 0)
+            goto end;
+    } else {
+        if ((ret = seek_to_ts(ts, fmtCtx, streamIdx)) < 0)
+            goto end;
+        while (av_read_frame(fmtCtx, packet) >= 0) {
+            if (packet->stream_index == streamIdx) {
+                if ((ret = decode_packet(codecCtx, packet, frame, frameRGB, swsCtx,
+                    &frameFinished)) < 0) {
+                    av_packet_unref(packet);
+                    goto end;
+                }
+                if (frameFinished)
+                    break;
             }
-            if (frameFinished) {
-                create_bitmap_from_frame(frameRGB, hbmp);
-                break;
-            }
+            av_packet_unref(packet);
         }
-        av_packet_unref(packet);
     }
+    if (!frameFinished) {
+        ret = AVERROR_INVALIDDATA;
+        goto end;
+    }
+    if ((ret = create_bitmap_from_frame(frameRGB, hbmp)) < 0)
+        goto end;
     ret = S_OK;
 end:
     clean_up(swsCtx, packet, frameRGB, frame, codecCtx, fmtCtx);
@@ -206,6 +230,7 @@ end:
             av_free(avioCtx->buffer);
             avio_context_free(&avioCtx);
         }
+        *dst = NULL;
     }
     return ret;
 }
@@ -362,6 +387,17 @@ static int get_video_stream_index(AVFormatContext *ic) {
     for (unsigned int i = 0; i < ic->nb_streams; i++) {
         if (ic->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
             return i;
+    }
+    return AVERROR_STREAM_NOT_FOUND;
+}
+
+static int get_attached_pic_stream_index(AVFormatContext* ic) {
+    for (unsigned int i = 0; i < ic->nb_streams; i++) {
+        AVStream* st = ic->streams[i];
+        if (st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO &&
+            (st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
+            return i;
+        }
     }
     return AVERROR_STREAM_NOT_FOUND;
 }

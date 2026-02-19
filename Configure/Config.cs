@@ -110,8 +110,9 @@ namespace Configure {
                 try {
                     rm.Shutdown(RestartManagerSession.ShutdownType.Normal);
                     Thread.Sleep(100);
-                    foreach (var f in Directory.GetFiles(path, "*.db"))
-                        File.Delete(f);
+                    foreach (var f in Directory.GetFiles(path, "*.db")) {
+                        try { File.Delete(f); } catch { }
+                    }
                     Thread.Sleep(100);
                 } finally {
                     rm.Restart();
@@ -156,6 +157,32 @@ namespace Configure {
         /// </param>
         public static void SetThumbnailTimestamp(int value) {
             Registry.SetValue(RegPath, "ThumbnailTimestamp", value);
+        }
+
+
+        /// <summary>
+        /// Gets the value of the UseCover Registry setting that determines whether
+        /// embedded cover images should be used as thumbnails.
+        /// </summary>
+        /// <returns>
+        /// True if UseCover is enabled in the Registry; otherwise, false.
+        /// </returns>
+        public static bool GetUseCover() {
+            var val = Registry.GetValue(RegPath, "UseCover", 0);
+            if (val == null)
+                return false;
+            return (int)val != 0;
+        }
+
+        /// <summary>
+        /// Sets the value of the UseCover Registry setting to the specified value.
+        /// </summary>
+        /// <param name="value">
+        /// True to enable using embedded cover images as thumbnails; false to
+        /// always generate thumbnails from video frames.
+        /// </param>
+        public static void SetUseCover(bool value) {
+            Registry.SetValue(RegPath, "UseCover", value ? 1 : 0);
         }
 
         /// <summary>

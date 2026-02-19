@@ -52,6 +52,7 @@ namespace Configure {
             this.label1 = new System.Windows.Forms.Label();
             this.ext_all = new System.Windows.Forms.CheckBox();
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.cover = new System.Windows.Forms.CheckBox();
             this.thumbnails.SuspendLayout();
             this.fileTypes.SuspendLayout();
             this.SuspendLayout();
@@ -330,11 +331,23 @@ namespace Configure {
             this.toolTip.AutomaticDelay = 0;
             this.toolTip.ShowAlways = true;
             // 
+            // cover
+            // 
+            this.cover.AutoSize = true;
+            this.cover.Font = new System.Drawing.Font("Segoe UI Symbol", 9.75F);
+            this.cover.Location = new System.Drawing.Point(253, 406);
+            this.cover.Name = "cover";
+            this.cover.Size = new System.Drawing.Size(229, 21);
+            this.cover.TabIndex = 36;
+            this.cover.Text = "Use cover as thumbnail if available";
+            this.cover.UseVisualStyleBackColor = true;
+            // 
             // Form
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(753, 450);
+            this.Controls.Add(this.cover);
             this.Controls.Add(this.clear_cache);
             this.Controls.Add(this.thumbnails);
             this.Controls.Add(this.label9);
@@ -393,6 +406,7 @@ namespace Configure {
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.CheckBox ext_all;
         private System.Windows.Forms.ToolTip toolTip;
+        private System.Windows.Forms.CheckBox cover;
     }
 }
 
