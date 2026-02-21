@@ -59,8 +59,8 @@ extern "C" {
      * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
      *                an HRESULT (or FFMPEG) error code.
      */
-    HRESULT GetVideoThumbnail(IN IStream* stream, int cx, int ts, BOOL useCover,
-        OUT HBITMAP* hbmp);
+    HRESULT GetVideoThumbnail(IN IStream *stream, int cx, int ts, BOOL useCover,
+        OUT HBITMAP *hbmp);
 #ifdef __cplusplus
 }
 #endif  /* __cplusplus */

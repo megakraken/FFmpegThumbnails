@@ -65,9 +65,7 @@ namespace Configure {
             this.clear_cache.Size = new System.Drawing.Size(96, 31);
             this.clear_cache.TabIndex = 35;
             this.clear_cache.Text = "Clear Cache";
-            this.toolTip.SetToolTip(this.clear_cache, "Clears the Windows Thumbnail Cache. This will cause\r\nall Thumbnails to be regener" +
-        "ated.\r\n\r\nYou should do this after changing the Thumbnail\r\nTimestamp setting for " +
-        "changes to take effect.");
+            this.toolTip.SetToolTip(this.clear_cache, resources.GetString("clear_cache.ToolTip"));
             this.clear_cache.UseVisualStyleBackColor = true;
             this.clear_cache.Click += new System.EventHandler(this.clear_cache_Click);
             // 
@@ -329,6 +327,9 @@ namespace Configure {
             // toolTip
             // 
             this.toolTip.AutomaticDelay = 0;
+            this.toolTip.AutoPopDelay = 20000;
+            this.toolTip.InitialDelay = 10;
+            this.toolTip.ReshowDelay = 100;
             this.toolTip.ShowAlways = true;
             // 
             // cover

@@ -123,6 +123,7 @@ IFACEMETHODIMP FFmpegThumbnailProvider::GetThumbnail(UINT cx, HBITMAP *phbmp,
     HRESULT ret = _ReadConfigDword(L"ThumbnailTimestamp", &dwTimestamp);
     if (ret != S_OK)
         dwTimestamp = TS_BEGINNING;
-    _ReadConfigDword(L"UseCover", &dwUseCover);
+    if ((ret = _ReadConfigDword(L"UseCover", &dwUseCover)) != S_OK)
+        dwUseCover = 0;
     return GetVideoThumbnail(_pStream, cx, dwTimestamp, dwUseCover, phbmp);
 }

@@ -16,12 +16,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
- /**
-  * Implements the COM plumbing needed for implementing the thumbnail provider.
-  *
-  * Based on the RecipeThumbnailProvider sample from MSDN.
-  *
-  */
+/**
+ * Implements the COM plumbing needed for implementing the thumbnail provider.
+ *
+ * Based on the RecipeThumbnailProvider sample from MSDN.
+ *
+ */
 
 #include "FFmpegThumbnailProvider.h"
 
@@ -159,7 +159,7 @@ HRESULT CreateRegKeyAndSetValue(const REGISTRY_ENTRY *pRegistryEntry) {
         DWORD cbData = pRegistryEntry->dwType == REG_DWORD ? sizeof(DWORD) :
             ((DWORD)wcslen((PCWSTR)pRegistryEntry->lpData) + 1) * sizeof(WCHAR);
         DWORD dwValue = (DWORD)pRegistryEntry->lpData;
-        LPBYTE lpData =  pRegistryEntry->dwType == REG_DWORD ? (LPBYTE)&dwValue :
+        LPBYTE lpData = pRegistryEntry->dwType == REG_DWORD ? (LPBYTE)&dwValue :
             (LPBYTE)pRegistryEntry->lpData;
         hr = HRESULT_FROM_WIN32(RegSetValueExW(hKey, pRegistryEntry->pszValueName, 0,
             pRegistryEntry->dwType, lpData, cbData));
@@ -192,6 +192,13 @@ STDAPI DllRegisterServer() {
                 L"ThumbnailTimestamp",
                 REG_DWORD,
                 (LPVOID)TS_BEGINNING
+            },
+            {
+                HKEY_CURRENT_USER,
+                L"Software\\Classes\\CLSID\\" SZ_CLSID_FFMPEGTHUMBHANDLER,
+                L"UseCover",
+                REG_DWORD,
+                (LPVOID)0
             },
             {
                 HKEY_CURRENT_USER,

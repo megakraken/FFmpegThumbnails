@@ -21,7 +21,7 @@
  *
  * Provides a single method that is called from the IThumbnailProvider to generate
  * and return a thumbnail as a HBITMAP for a given IStream.
- * 
+ *
  * FFmpeg version used is 4.4.1.
  */
 #ifndef _CRT_SECURE_NO_WARNINGS
@@ -50,7 +50,7 @@
 
 static HRESULT create_format_context(IStream *stream, AVFormatContext **dst);
 static int get_video_stream_index(AVFormatContext *ic);
-static int get_attached_pic_stream_index(AVFormatContext* ic);
+static int get_attached_pic_stream_index(AVFormatContext *ic);
 static HRESULT create_codec_context(AVCodecParameters *codecParams, AVCodecContext **dst);
 static HRESULT create_rgb_frame(AVCodecContext *codecCtx, int cx, AVFrame **dst);
 static int seek_to_ts(int ts, AVFormatContext *fmtCtx, int streamIdx);
@@ -62,7 +62,7 @@ static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frame
 
 /**
  * Gets a thumbnail for the video contained in the given stream.
- * 
+ *
  * @param stream    A pointer to an IStream interface that represents the stream
  *                  source that contains the video.
  * @param cx        The maximum thumbnail size, in pixels. The returned bitmap should
@@ -78,7 +78,7 @@ static void clean_up(struct SwsContext *swsCtx, AVPacket *packet, AVFrame *frame
                     generating thumbnail from video otherwise.
  * @param hbmp      When this function returns, contains a pointer to the thumbnail
  *                  image handle. The image is a DIB section and 32 bits per pixel.
- * 
+ *
  * @return          If this function succeeds, it returns S_OK. Otherwise, it returns
  *                  an HRESULT (or FFMPEG) error code.
  */
@@ -187,11 +187,11 @@ static int64_t seek_cb(void *opaque, int64_t offset, int whence) {
 /**
  * This creates and initializes an AVFormatContext and sets it up to read media data
  * from the given stream.
- * 
+ *
  * @param stream  The IStream instance the AVFormatContext will be wired up to.
  * @param dst     A pointer to a pointer that will point to the allocated AVFormatContext
  *                structure upon function return.
- * 
+ *
  * @return        If this function succeeds, it returns S_OK. Otherwise, it returns
  *                an HRESULT (or FFMPEG) error code.
  */
@@ -343,7 +343,7 @@ static HRESULT create_bitmap_from_frame(AVFrame *frameRGB, OUT HBITMAP *hbmp) {
         ret = GetLastError();
         goto end;
     }
-    unsigned int *bytes = (unsigned int*) bits;
+    unsigned int *bytes = (unsigned int *)bits;
     for (i = 0; i < frameRGB->height; i++) {
         // linesize is just the size of a single line in bytes, i.e. for a 24-bit image
         // linesize = width * 3.
@@ -391,9 +391,9 @@ static int get_video_stream_index(AVFormatContext *ic) {
     return AVERROR_STREAM_NOT_FOUND;
 }
 
-static int get_attached_pic_stream_index(AVFormatContext* ic) {
+static int get_attached_pic_stream_index(AVFormatContext *ic) {
     for (unsigned int i = 0; i < ic->nb_streams; i++) {
-        AVStream* st = ic->streams[i];
+        AVStream *st = ic->streams[i];
         if (st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO &&
             (st->disposition & AV_DISPOSITION_ATTACHED_PIC)) {
             return i;

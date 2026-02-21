@@ -34,7 +34,8 @@ namespace Configure {
     public static class Config {
         static readonly string[] Extensions = {
             "3g2", "3gp", "asf", "avi", "flv", "m4v", "mkv", "mov", "mp4", "m4p", "mpg",
-            "mp2", "mpe", "mpeg", "mpv", "m2v", "ts", "ogv", "vob", "webm", "wmv", "qt"
+            "mp2", "mpe", "mpeg", "mpv", "m2v", "m2ts", "mts", "ts", "ogv", "vob", "webm",
+            "wmv", "qt"
         };
 
         [DllImport("Shell32.dll")]
