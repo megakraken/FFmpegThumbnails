@@ -10,6 +10,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FFmpegThumbnailProvider", "FFmpegThumbnailProvider\FFmpegThumbnailProvider.vcxproj", "{0001A41C-66FF-4D5F-8815-761E8845361D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configure", "Configure\Configure.csproj", "{3B3E1F9E-53AD-44E6-BD08-5BEA42C1C677}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0001A41C-66FF-4D5F-8815-761E8845361D} = {0001A41C-66FF-4D5F-8815-761E8845361D}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
