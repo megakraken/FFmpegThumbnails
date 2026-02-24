@@ -118,7 +118,7 @@
     <EmbeddedResource Include="..\FFmpegThumbnail\FFmpeg\bin\swscale-5.dll">
       <Link>Resources\swscale-5.dll</Link>
     </EmbeddedResource>
-    <EmbeddedResource Include="..\x64\Release\FFmpegThumbnailProvider.dll">
+    <EmbeddedResource Include="..\x64\$(Configuration)\FFmpegThumbnailProvider.dll">
       <Link>Resources\FFmpegThumbnailProvider.dll</Link>
     </EmbeddedResource>
     <Content Include="icon.ico" />

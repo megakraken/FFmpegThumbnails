@@ -160,7 +160,6 @@ namespace Configure {
             Registry.SetValue(RegPath, "ThumbnailTimestamp", value);
         }
 
-
         /// <summary>
         /// Gets the value of the UseCover Registry setting that determines whether
         /// embedded cover images should be used as thumbnails.

@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build solution (Release x64)
+        run: msbuild .\FFmpegThumbnails.sln /p:Configuration=Release /p:Platform=x64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FFmpegThumbnails-x64-release
+          path: |
+            Configure\bin\Release\Configure.exe
